@@ -1,5 +1,5 @@
 # PhotohuntServer
-Сервер для anroid-приложения ["Фотокросс"](https://play.google.com/store/apps/details?id=ru.neverdark.photohunt)
+Сервер для android-приложения ["Фотокросс"](https://play.google.com/store/apps/details?id=ru.neverdark.photohunt)
 
 ### Установка
 1. Создать БД в mysql
