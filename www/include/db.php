@@ -191,7 +191,7 @@ class Database {
      */
     public function getRating() {
         $stmt = $this->mConnection->query("select id, display_name, balance from users where balance > 0 order by balance ".
-                "desc limit 10");
+                "desc, id desc limit 10");
 
         $ret = array();
 
@@ -610,7 +610,7 @@ class Database {
     public function getImagesForContest($contestId, $isClosed) {
         $images = array();
         if ($isClosed) {
-            $query = "select * from view_images where contest_id = :contest_id order by vote_count desc";
+            $query = "select * from view_images where contest_id = :contest_id order by vote_count desc, id asc";
         } else {
             $query = "select * from view_images where contest_id = :contest_id order by id desc";
         }
