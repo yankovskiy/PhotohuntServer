@@ -145,11 +145,12 @@ class ContestMgmt {
     /**
      * Добавить изображение на конкурс. Изображение может быть добавлено только в открытый конкурс
      * @param int $id id конкурса
-     * @return boolean true в случае успешного добавления изображения
+     * @return array (status, error). Boolean status false в случае ошибки, string error содержит текст ошибки
      */
     public function addImageToContest($id) {
         $success = false;
-
+        $error = null;
+        
         $auth = new Auth();
         if ($auth->authenticate($this->mDb) && isset($_POST["subject"]) && isset($_FILES["image"])) {
             $contest = $this->mDb->getContest($id);
@@ -180,12 +181,18 @@ class ContestMgmt {
                                 $this->mDb->removeImageFromContest($contestId, $recordId);
                             }
                         }
+                    } else {
+                        $error = "Вы уже загружали работу в этот конкурс";
                     }
+                } else {
+                    $error = "Вы не можете добавлять работы в свой конкурс";
                 }
+            } else {
+                $error = "Работы принимаются только в открытый конкурс";
             }
         }
 
-        return $success;
+        return array("status" => $success, "error" => $error);
     }
 
     /**
@@ -261,10 +268,13 @@ class ContestMgmt {
      * со статусом "идет голосование". За свои работы голосовать нельзя.
      * @param int $id id конкурса
      * @param json_data $body тело сообщения содержащие информацию по изображению за которое голосуется
-     * @return boolean true в случае успешного голосования за работу
+     * @return array(status, error) status boolean true в случае успешного голосования за работу, 
+     * string error содержит текст ошибки
      */
     public function voteForContest($id, $body) {
         $success = false;
+        $error = null;
+        
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
             $contest = $this->mDb->getContest($id);
@@ -279,14 +289,24 @@ class ContestMgmt {
                         $image = $this->mDb->getImageById($body->id);
                         // картинка существует и пользователь не ее владелец
                         if (isset($image) && $this->isUserOwnerPhoto($image, $user) == false) {
-                            $success = $this->mDb->voteForImage($image, $user);
+                            if ($image->contest_id == $id) { 
+                                $status = $this->mDb->voteForImage($image, $user);
+                                $success = $status["status"];
+                                $error = $status["error"];
+                            } else {
+                                $error = "В выбранном конкурсе нет такой работы";
+                            }
+                        } else {
+                            $error = "За свои работы голосовать нельзя";
                         }
                     }
                 }
+            } else {
+                $error = "Сейчас не этап голосования за работы";
             }
         }
 
-        return $success;
+        return array("status" => $success, "error" => $error);
     }
 
     /**

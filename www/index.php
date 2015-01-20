@@ -149,8 +149,9 @@ function addImageToContest($id) {
     $app = \Slim\Slim::getInstance();
     try {
         $contest->conenctToDb();
-        if($contest->addImageToContest($id) == false) {
-            $app->halt(403);
+        $status = $contest->addImageToContest($id);
+        if($status["status"] == false) {
+            $app->halt(403, json_encode($status, JSON_UNESCAPED_UNICODE));
         }
     } catch (PDOException $e) {
         $app->halt(500);
@@ -163,8 +164,9 @@ function voteForContest($id) {
     try {
         $contest->conenctToDb();
         $body = $app->request()->getBody();
-        if($contest->voteForContest($id, $body) == false) {
-            $app->halt(403);
+        $status = $contest->voteForContest($id, $body); 
+        if($status["status"] == false) {
+            $app->halt(403, json_encode($status, JSON_UNESCAPED_UNICODE));
         }
     } catch (PDOException $e) {
         $app->halt(500);

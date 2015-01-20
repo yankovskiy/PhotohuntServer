@@ -656,17 +656,17 @@ class Database {
      * Право голоса вычитается из количества голосов у пользователя
      * @param Image $image объект содержащий информацию о картинке за которую голосовать
      * @param User $user объект содержащий информацию о пользователе
-     * @return boolean true в случае успешного голосования
+     * @return array boolean status true в случае успешного голосования, string error текст ошибки
      */
     public function voteForImage($image, $user) {
         $success = false;
-        $voteCount = $user->vote_count;
         $isAlreadyVoted = false;
         $imageId = $image->id;
         $userId = $user->id;
+        $error = null;
 
         // если пользователь не истратил все голоса
-        if ($voteCount > 0) {
+        if ($user->vote_count > 0) {
             $query = "select id from votes where user_id = :user_id and image_id = :image_id";
             $stmt = $this->mConnection->prepare($query);
             $params = array("user_id" => $userId, "image_id" => $imageId);
@@ -681,30 +681,35 @@ class Database {
             if ($isAlreadyVoted == false) {
                 $this->mConnection->beginTransaction();
                 try {
-                    $updateUserQuery = "update users set vote_count = :vote_count where id = :id";
-                    $voteCount--;
-                    $updateUserParams = array("vote_count" => $voteCount, "id" => $userId);
-                    $updateUserStmt = $this->mConnection->prepare($updateUserQuery);
-                    $updateUserStmt->execute($updateUserParams);
-
-                    $updateImageQuery = "update images set vote_count = vote_count + 1 where id = :id";
-                    $updateImageParams = array("id" => $imageId);
-                    $updateImageStmt = $this->mConnection->prepare($updateImageQuery);
-                    $updateImageStmt->execute($updateImageParams);
-
                     $addVoteQuery = "insert into votes (user_id, image_id) values (:user_id, :image_id)";
                     $addVoteParams = array("user_id" => $userId, "image_id"=>$imageId);
                     $addVoteStmt = $this->mConnection->prepare($addVoteQuery);
                     $addVoteStmt->execute($addVoteParams);
+                    
+                    $updateImageQuery = "update images set vote_count = vote_count + 1 where id = :id";
+                    $updateImageParams = array("id" => $imageId);
+                    $updateImageStmt = $this->mConnection->prepare($updateImageQuery);
+                    $updateImageStmt->execute($updateImageParams);
+                    
+                    $updateUserQuery = "update users set vote_count = vote_count - 1 where id = :id";
+                    $updateUserParams = array("id" => $userId);
+                    $updateUserStmt = $this->mConnection->prepare($updateUserQuery);
+                    $updateUserStmt->execute($updateUserParams);
 
                     $this->mConnection->commit();
                     $success = true;
                 } catch(PDOException $e) {
                     $this->mConnection->rollBack();
+                    $error = "Вы уже голосовали за эту работу";
                 }
+            } else {
+                $error = "Вы уже голосовали за эту работу";
             }
+        } else {
+            $error = "У вас нет очков голосования";
         }
-        return $success;
+        
+        return array("status" => $success, "error" => $error);
     }
 
     /**
