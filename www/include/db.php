@@ -600,6 +600,29 @@ class Database {
 
         return $contest;
     }
+    
+    /**
+     * Получает информацию о всех открытых конкурсах
+     * @return array массив объектов Contest содержащий информацию о всех открытых конкурсах, либо null если конкурсов нет
+     */
+    public function getOpenContests() {
+        $query = "select * from view_contests where status != :status order by id desc";
+        $contests = null;
+        
+        $stmt = $this->mConnection->prepare($query);
+        $params = array("status" => Contest::STATUS_CLOSE);
+        $stmt->execute($params);
+        
+        if ($stmt != false) {
+            $contests = array();
+            while($row = $stmt->fetch()) {
+                $contest = new Contest($row);
+                $contests[] = $contest;
+            }
+        }
+        
+        return $contests;
+    }
 
     /**
      * @param id $contestId id конкурса для которого необходимо получить массив картинок

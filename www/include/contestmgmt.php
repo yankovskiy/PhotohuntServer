@@ -40,6 +40,26 @@ class ContestMgmt {
     }
 
     /**
+     * Получает информацию о всех проводимых конкурсах
+     * @return false в случае ошибки
+     */
+    public function getOpenContests() {
+        $success = false;
+        
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $contests = $this->mDb->getOpenContests();
+        
+            if (isset($contests)) {
+                echo json_encode($contests, JSON_UNESCAPED_UNICODE);
+                $success = true;
+            }
+        }
+        
+        return $success;
+    }
+    
+    /**
      * Изменяет статус трехдневного конкурса на "в голосовании"
      * Конкурс должен быть открыт
      * @return boolean true в случае успешного изменения статуса конкурса

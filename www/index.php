@@ -19,6 +19,7 @@
 require_once 'vendor/autoload.php';
 require_once 'include/usermgmt.php';
 require_once 'include/contestmgmt.php';
+require_once 'include/common.php';
 
 $app = new \Slim\Slim();
 $app->contentType('text/html; charset=utf-8');
@@ -37,7 +38,7 @@ $app->get('/user', 'getRating');                       // рейтинг пол�
 
 /* contest management */
 $app->get('/contests', 'getContests');            // список всех конкурсов
-$app->get('/contest', 'getLastContest');          // получить информацию о последнем конкурсе
+$app->get('/contest', 'getOpenContests');         // получить информацию об открытых конкурсах
 $app->get('/contest/:id', 'getContestDetails');   // получить детальную информацию по указанном конкурсе
 $app->post('/contest/:id', 'addImageToContest');  // добавить фотографию в открытый конкурс
 $app->put('/contest/:id', 'voteForContest');      // голосование за изображение
@@ -202,13 +203,19 @@ function sendPassword($cryptUser, $hash) {
     }
 }
 
-function getLastContest() {
+function getOpenContests() {
     $contest = new ContestMgmt();
     $app = \Slim\Slim::getInstance();
     try {
         $contest->conenctToDb();
-        if($contest->getLastContest() == false) {
-            $app->halt(404);
+        if (Common::getClientVersion() < 8) {
+            if ($contest->getLastContest() == false) {
+                $app->halt(404);
+            }
+        } else {
+            if ($contest->getOpenContests() == false) {
+                $app->halt(404);
+            }
         }
         
     } catch (PDOException $e) {
