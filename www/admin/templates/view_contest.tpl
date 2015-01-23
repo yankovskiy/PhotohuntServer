@@ -18,7 +18,7 @@
 <td>{$images[img].image.vote_count}</td>
 <td>
 {section name=vote loop=$images[img].votes}
-{$images[img].votes[vote].display_name} ({$images[img].votes[vote].user_id})<br>
+{$images[img].votes[vote].display_name} ({$images[img].votes[vote].user_id} : <a href="http://whatismyipaddress.com/ip/{$images[img].votes[vote].from}" target="_blank">{$images[img].votes[vote].from}</a>)<br>
 {/section}
 </td>
 <td>

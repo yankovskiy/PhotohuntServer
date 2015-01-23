@@ -659,7 +659,7 @@ class Database {
      * @return массив проголосовавних за изображение
      */
     public function getVoteListForImage($imageId) {
-        $query = "select u.display_name,u.user_id from users u inner join votes v on u.id = v.user_id where v.image_id = :image_id";
+        $query = "select u.display_name,u.user_id,v.`from` from users u inner join votes v on u.id = v.user_id where v.image_id = :image_id";
         $param = array("image_id" => $imageId);
         $stmt = $this->mConnection->prepare($query);
         $stmt->execute($param);
@@ -668,6 +668,7 @@ class Database {
             $val = array();
             $val["display_name"] = $row["display_name"];
             $val["user_id"] = $row["user_id"];
+            $val["from"] = $row["from"];
             $ret[] = $val;
         }
 
@@ -679,9 +680,10 @@ class Database {
      * Право голоса вычитается из количества голосов у пользователя
      * @param Image $image объект содержащий информацию о картинке за которую голосовать
      * @param User $user объект содержащий информацию о пользователе
+     * @param String $from IP-адрес клиента
      * @return array boolean status true в случае успешного голосования, string error текст ошибки
      */
-    public function voteForImage($image, $user) {
+    public function voteForImage($image, $user, $from = NULL) {
         $success = false;
         $isAlreadyVoted = false;
         $imageId = $image->id;
@@ -704,8 +706,8 @@ class Database {
             if ($isAlreadyVoted == false) {
                 $this->mConnection->beginTransaction();
                 try {
-                    $addVoteQuery = "insert into votes (user_id, image_id) values (:user_id, :image_id)";
-                    $addVoteParams = array("user_id" => $userId, "image_id"=>$imageId);
+                    $addVoteQuery = "insert into `votes` (`user_id`, `image_id`, `from`) values (:user_id, :image_id, :from)";
+                    $addVoteParams = array("user_id" => $userId, "image_id"=>$imageId, "from" => $from);
                     $addVoteStmt = $this->mConnection->prepare($addVoteQuery);
                     $addVoteStmt->execute($addVoteParams);
                     

@@ -19,6 +19,7 @@
 require_once 'db.php';
 require_once 'auth.php';
 require_once 'user.php';
+require_once 'common.php';
 require_once 'contest.php';
 require_once 'image.php';
 require_once 'item.php';
@@ -310,7 +311,7 @@ class ContestMgmt {
                         // картинка существует и пользователь не ее владелец
                         if (isset($image) && $this->isUserOwnerPhoto($image, $user) == false) {
                             if ($image->contest_id == $id) { 
-                                $status = $this->mDb->voteForImage($image, $user);
+                                $status = $this->mDb->voteForImage($image, $user, Common::getClientIp());
                                 $success = $status["status"];
                                 $error = $status["error"];
                             } else {
