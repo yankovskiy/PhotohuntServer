@@ -317,7 +317,9 @@ class Admin {
     private function printAllUsers() {
         $smarty = new Smarty();
         $users = $this->objectsToArray($this->mDb->getUsers());
+        $count = count($users);
         $smarty->assign("users", $users);
+        $smarty->assign("count", $count);
         $smarty->display("view_users.tpl");
     }
 

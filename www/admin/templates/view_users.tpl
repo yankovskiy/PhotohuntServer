@@ -23,6 +23,8 @@
 </tr>
 {/section}
 </table>
+<br>
+<strong>Всего пользователей: {$count}</strong>
 
 <br>
 <br>
