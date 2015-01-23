@@ -80,7 +80,7 @@ class Admin {
     }
 
     private function viewContest($id) {
-        $images = $this->objectsToArray($this->mDb->getImagesForContest($id, false));
+        $images = $this->objectsToArray($this->mDb->getImagesForContest($id, true));
         $imageList = array();
         foreach ($images as $image) {
             $val = array();
