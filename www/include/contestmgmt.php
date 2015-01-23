@@ -39,6 +39,14 @@ class ContestMgmt {
         $this->mDb = new Database();
         $this->mDb->connect();
     }
+    
+    /**
+     * Указывает классу использовать созданное ранее подключение к базе данных
+     * @param Database $db
+     */
+    public function setDbConnection($db) {
+        $this->mDb = $db;
+    }
 
     /**
      * Получает информацию о всех проводимых конкурсах
@@ -216,6 +224,26 @@ class ContestMgmt {
         return array("status" => $success, "error" => $error);
     }
 
+    /**
+     * Загрузка изображения в конкурс через админку
+     * @param Image $image картинка для загрузки
+     */
+    public function adminAddImage($image) {
+        $recordId = $this->mDb->addImageToContest($image);
+        if ($recordId != -1) {
+            $file = $_FILES["image"];
+            $uploadfile = Config::UPLOAD_PATH . basename($recordId . ".jpg");
+        
+            $success = $this->handleUploadedFile($file, $uploadfile);
+        
+            if ($success) {
+                $this->mDb->incrementUserBalance($image->user_id);
+            } else {
+                $this->mDb->removeImageFromContest($image->contest_id, $recordId);
+            }
+        }
+    }
+    
     /**
      * Обрабатывает загруженное изображение.
      * Изменяет размер загруженного изображения, меняет качество

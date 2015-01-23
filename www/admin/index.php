@@ -19,6 +19,7 @@
 require_once '../include/db.php';
 require_once '../include/auth.php';
 require_once '../vendor/smarty/Smarty.class.php';
+require_once '../include/contestmgmt.php';
 
 abstract class Types {
     const CONTEST = "contest";
@@ -89,7 +90,19 @@ class Admin {
             $imageList[] = $val;
         }
 
+        $user_option_selected = 1; // System user id
+        $user_option_values = array();
+        $user_option_output = array();
+        foreach ($this->mDb->getUsers() as $user) {
+            $user_option_values[] = $user->id;
+            $user_option_output[] = $user->display_name;
+        }
+        
         $smarty = new Smarty();
+        $smarty->assign("user_option_selected", $user_option_selected);
+        $smarty->assign("user_option_values", $user_option_values);
+        $smarty->assign("user_option_output", $user_option_output);
+        $smarty->assign("contestId", $id);
         $smarty->assign("images", $imageList);
         $smarty->display("view_contest.tpl");
     }
@@ -102,8 +115,26 @@ class Admin {
                 $this->editImage($id, $contestId);
             } else if ($action == Action::DELETE) {
                 $this->removeImage($id, $contestId);
-            }
+            } 
         }
+        else if ($action == Action::ADD) {
+            $this->addImage($contestId);
+        }
+    }
+    
+    private function addImage($contestId) {
+        if (isset($_POST["submit"])) {
+            $image = new Image();
+            $image->user_id = $_POST["user_id"];
+            $image->subject = $_POST["subject"];
+            $image->contest_id = $contestId;
+            
+            $contestMgmt = new ContestMgmt();
+            $contestMgmt->setDbConnection($this->mDb);
+            $contestMgmt->adminAddImage($image);
+        }
+        
+        $this->viewContest($contestId);
     }
 
     private function editImage($id, $contestId) {

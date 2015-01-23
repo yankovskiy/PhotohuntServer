@@ -27,9 +27,24 @@
 </td>
 </tr>
 {/section}
-
-
-
 </table>
+<br>
+<br>
+<strong>Загрузка изображения в конкурс</strong><br>
+<form method="POST" action="{$SCRIPT_NAME}?action=add&type=image&contest={$contestId}" enctype="multipart/form-data">
+<table border="1" cellpadding="2">
+<tr>
+<td>Тема следующего конкурса</td>
+<td>Пользователь</td>
+<td colspan="2">Файл</td>
+</tr>
+<tr>
+<td><input type="text" name="subject" value=""></td>
+<td><select name="user_id">{html_options values=$user_option_values selected=$user_option_selected output=$user_option_output}</select></td>
+<td><input type="file" name="image" value="Обзор"></td>
+<td><input type="submit" name="submit" value="Загрузить"></td>
+</tr>
+</table>
+</form>
 
 {include file="footer.tpl"}
