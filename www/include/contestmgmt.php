@@ -359,6 +359,76 @@ class ContestMgmt {
     }
 
     /**
+     * Удаляет изображение из конкурса.
+     * Удалить можно только свое изображение из конкурса в статусе "Прием работ".
+     * @param int $id id изображения для удаления
+     */
+    public function deleteImage($id) {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $image = $this->mDb->getImageById($id);
+            if (!isset($image)) {
+                throw new ContestException("Указанного изображения не существует");
+            }
+            
+            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            if (!$this->isUserOwnerPhoto($image, $user)) {
+                throw new ContestException("Вы не владелец этого изображения");
+            }
+            
+            $contest = $this->mDb->getContest($image->contest_id);
+            if (!isset($contest)) {
+                throw new ContestException("Конкурса не существует");
+            }
+            
+            if (!$this->isContestOpen($contest)) {
+                throw new ContestException("Удаление возможно только из конкурсов на этапе приёма работ");
+            }
+            
+            $fileName = Config::UPLOAD_PATH . $image->id . ".jpg";
+            unlink($fileName);
+            $this->mDb->removeImageFromContest($image->contest_id, $image->id);
+            $this->mDb->decreaseUserBalance($image->user_id);
+        }
+    }
+    
+    /**
+     * Меняет "новую тему" у своего изображения
+     * @param id $id id изображения для смены темы
+     * @param json_data $body тело содержащее новую тему
+     */
+    public function updateImage($id, $body) {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $image = $this->mDb->getImageById($id);
+            if (!isset($image)) {
+                throw new ContestException("Указанного изображения не существует");
+            }
+        
+            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            if (!$this->isUserOwnerPhoto($image, $user)) {
+                throw new ContestException("Вы не владелец этого изображения");
+            }
+        
+            $contest = $this->mDb->getContest($image->contest_id);
+            if (!isset($contest)) {
+                throw new ContestException("Конкурса не существует");
+            }
+        
+            if (!$this->isContestOpen($contest)) {
+                throw new ContestException("Изменение темы возможно только в конкурсах на этапе приёма работ");
+            }
+            
+            $body = json_decode($body);
+            if (!isset($body) || !isset($body->subject) || strlen($body->subject) == 0) {
+                throw new ContestException("Незадана новая тема");
+            }
+            
+            $this->mDb->updateImageSubject($id, $body->subject);
+        }
+    }
+    
+    /**
      * @param Contest объект содержащий информацию о конкурсе
      * @return boolean true если конкурс открыт для колосования
      */

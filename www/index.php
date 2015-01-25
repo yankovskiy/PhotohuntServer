@@ -20,6 +20,7 @@ require_once 'vendor/autoload.php';
 require_once 'include/usermgmt.php';
 require_once 'include/contestmgmt.php';
 require_once 'include/common.php';
+require_once 'include/exceptions.php';
 
 $app = new \Slim\Slim();
 $app->contentType('text/html; charset=utf-8');
@@ -42,8 +43,39 @@ $app->get('/contest', 'getOpenContests');         // получить инфор
 $app->get('/contest/:id', 'getContestDetails');   // получить детальную информацию по указанном конкурсе
 $app->post('/contest/:id', 'addImageToContest');  // добавить фотографию в открытый конкурс
 $app->put('/contest/:id', 'voteForContest');      // голосование за изображение
+$app->delete('/image/:id', 'deleteImage');        // удаление своего изображения
+$app->put('/image/:id', 'updateImage');           // изменение информации о своем изображении
 
 $app->run();
+
+function deleteImage($id) {
+    $contest = new ContestMgmt();
+    $app = \Slim\Slim::getInstance();
+    try {
+        $contest->conenctToDb();
+        $contest->deleteImage($id);
+    } catch (ContestException $e) {
+        $error = array("status" => false, "error" => $e->getMessage());
+        $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+    } catch (PDOException $e) {
+        $app->halt(500);
+    }
+}
+
+function updateImage($id) {
+    $contest = new ContestMgmt();
+    $app = \Slim\Slim::getInstance();
+    $body = $app->request()->getBody();
+    try {
+        $contest->conenctToDb();
+        $contest->updateImage($id, $body);
+    } catch (ContestException $e) {
+        $error = array("status" => false, "error" => $e->getMessage());
+        $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+    } catch (PDOException $e) {
+        $app->halt(500);
+    }
+}
 
 function getRating() {
     $user = new UserMgmgt();

@@ -371,6 +371,18 @@ class Database {
     }
 
     /**
+     * Меняет новую тему у изображения
+     * @param id $id id изображения
+     * @param string $subject новая тема
+     */
+    public function updateImageSubject($id, $subject) {
+        $query = "update images set subject = :subject where id = :id";
+        $params = array("subject" => $subject, "id" => $id);
+        $stmt = $this->mConnection->prepare($query);
+        $stmt->execute($params);
+    }
+    
+    /**
      * Меняет информацию о пользователе
      * @param User $userInfo новая информация о пользователе. Изменить можно только display_name,
      *     password, balance
