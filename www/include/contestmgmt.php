@@ -95,7 +95,7 @@ class ContestMgmt {
     }
 
     /**
-     * Получить список конкурсов
+     * Получить список закрытых конкурсов
      * @return boolean false в случае ошибки
      */
     public function getContests() {

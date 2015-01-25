@@ -544,15 +544,23 @@ class Database {
     }
 
     /**
-     * Получить список всех конкурсов
+     * Получить список всех закрытых конкурсов
+     * @param boolean $showAll - true для отображения всех конкурсов
      * @return array массив объектов класса Contest
      */
-    public function getContests() {
-        $query = "select * from view_contests order by id desc";
-        $stmt = $this->mConnection->query($query);
-        $ret = array();
+    public function getContests($showAll = false) {
+        if ($showAll) {
+            $query = "select * from view_contests order by id desc";
+            $stmt = $this->mConnection->query($query);
+        } else {
+            $query = "select * from view_contests where status = :status order by id desc";
+            $stmt = $this->mConnection->prepare($query);
+            $params = array("status" => Contest::STATUS_CLOSE);
+            $stmt->execute($params);
+        }
 
-        foreach ($stmt as $row) {
+        $ret = array();
+        while($row = $stmt->fetch()) {
             $contest = new Contest($row);
             $ret[] = $contest;
         }

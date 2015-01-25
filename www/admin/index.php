@@ -260,7 +260,7 @@ class Admin {
 
     private function printAllContest() {
         $smarty = new Smarty();
-        $contests = $this->objectsToArray($this->mDb->getContests());
+        $contests = $this->objectsToArray($this->mDb->getContests(true));
         $smarty->assign("contests", $contests);
         $smarty->display("contests.tpl");
     }
