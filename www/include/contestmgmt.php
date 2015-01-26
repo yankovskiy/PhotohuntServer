@@ -39,7 +39,7 @@ class ContestMgmt {
         $this->mDb = new Database();
         $this->mDb->connect();
     }
-    
+
     /**
      * Указывает классу использовать созданное ранее подключение к базе данных
      * @param Database $db
@@ -54,20 +54,20 @@ class ContestMgmt {
      */
     public function getOpenContests() {
         $success = false;
-        
+
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
             $contests = $this->mDb->getOpenContests();
-        
+
             if (isset($contests)) {
                 echo json_encode($contests, JSON_UNESCAPED_UNICODE);
                 $success = true;
             }
         }
-        
+
         return $success;
     }
-    
+
     /**
      * Изменяет статус трехдневного конкурса на "в голосовании"
      * Конкурс должен быть открыт
@@ -148,20 +148,30 @@ class ContestMgmt {
             $isClosed = $contest->status == Contest::STATUS_CLOSE;
 
             if (isset($contest)) {
+                $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+                $votes = $user->vote_count;
                 $images = $this->mDb->getImagesForContest($id, $isClosed);
+
                 if ($images != null) {
                     foreach ($images as $image) {
-                        if ($isClosed == false) {
+                        if ($contest->status == Contest::STATUS_OPEN && $this->isUserOwnerPhoto($image, $user)) {
+                            $image->is_editable = true;
+                        } else {
+                            $image->is_editable = false;
+                        }
+
+                        if ($this->isUserOwnerPhoto($image, $user) == false && $isClosed == false) {
                             unset($image->subject);
-                            unset($image->vote_count);
-                            unset($image->display_name);
                             unset($image->user_id);
+                        }
+
+                        if ($isClosed == false) {
+                            unset($image->display_name);
+                            unset($image->vote_count);
                         }
                     }
                 }
-                
-                $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
-                $votes = $user->vote_count;
+
                 $sendData = array("contest" => $contest, "images" => $images, "votes" => $votes);
                 echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
                 $success = true;
@@ -179,7 +189,7 @@ class ContestMgmt {
     public function addImageToContest($id) {
         $success = false;
         $error = null;
-        
+
         $auth = new Auth();
         if ($auth->authenticate($this->mDb) && isset($_POST["subject"]) && isset($_FILES["image"])) {
             $contest = $this->mDb->getContest($id);
@@ -199,7 +209,7 @@ class ContestMgmt {
                             $file = $_FILES["image"];
                             $uploadfile = Config::UPLOAD_PATH . basename($recordId . ".jpg");
                             $success = $this->handleUploadedFile($file, $uploadfile);
-                            
+
                             if ($success) {
                                 $this->mDb->incrementUserBalance($user->id);
                                 // изменить количество платных публикаций
@@ -233,9 +243,9 @@ class ContestMgmt {
         if ($recordId != -1) {
             $file = $_FILES["image"];
             $uploadfile = Config::UPLOAD_PATH . basename($recordId . ".jpg");
-        
+
             $success = $this->handleUploadedFile($file, $uploadfile);
-        
+
             if ($success) {
                 $this->mDb->incrementUserBalance($image->user_id);
             } else {
@@ -243,7 +253,7 @@ class ContestMgmt {
             }
         }
     }
-    
+
     /**
      * Обрабатывает загруженное изображение.
      * Изменяет размер загруженного изображения, меняет качество
@@ -255,7 +265,7 @@ class ContestMgmt {
         $success = false;
         $whitelist = array(".jpg",".jpeg");
         try {
-            
+
             if ($file["size"] > 1512000 || $file["size"] < 4096) {
                 throw new Exception("Некорректный размер изображения");
             }
@@ -269,32 +279,32 @@ class ContestMgmt {
             if($i!=1) {
                 throw new Exception("Неразрешенное расширение файла");
             }
-            
+
             if ($file["type"] != "image/jpeg") {
                 throw new Exception("Неразрешенный формат файла");
             }
-            
+
             $image = new SimpleImage();
             $image->load($file["tmp_name"]);
             $width = $image->getWidth();
             $height = $image->getHeight();
-            
+
             if ($width > $height) {
                 if ($width > 1024) {
                     $width = 1024;
                 }
-                
+
                 $image->resizeToWidth($width);
             } else {
                 if ($height > 1024) {
                     $height = 1024;
                 }
-                
+
                 $image->resizeToHeight($height);
             }
-            
+
             $image->save($uploadfile, IMAGETYPE_JPEG, 60);
-            
+
             $success = true;
         } catch (Exception $e) {
 
@@ -317,13 +327,13 @@ class ContestMgmt {
      * со статусом "идет голосование". За свои работы голосовать нельзя.
      * @param int $id id конкурса
      * @param json_data $body тело сообщения содержащие информацию по изображению за которое голосуется
-     * @return array(status, error) status boolean true в случае успешного голосования за работу, 
+     * @return array(status, error) status boolean true в случае успешного голосования за работу,
      * string error содержит текст ошибки
      */
     public function voteForContest($id, $body) {
         $success = false;
         $error = null;
-        
+
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
             $contest = $this->mDb->getContest($id);
@@ -338,7 +348,7 @@ class ContestMgmt {
                         $image = $this->mDb->getImageById($body->id);
                         // картинка существует и пользователь не ее владелец
                         if (isset($image) && $this->isUserOwnerPhoto($image, $user) == false) {
-                            if ($image->contest_id == $id) { 
+                            if ($image->contest_id == $id) {
                                 $status = $this->mDb->voteForImage($image, $user, Common::getClientIp());
                                 $success = $status["status"];
                                 $error = $status["error"];
@@ -370,28 +380,28 @@ class ContestMgmt {
             if (!isset($image)) {
                 throw new ContestException("Указанного изображения не существует");
             }
-            
+
             $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
             if (!$this->isUserOwnerPhoto($image, $user)) {
                 throw new ContestException("Вы не владелец этого изображения");
             }
-            
+
             $contest = $this->mDb->getContest($image->contest_id);
             if (!isset($contest)) {
                 throw new ContestException("Конкурса не существует");
             }
-            
+
             if (!$this->isContestOpen($contest)) {
                 throw new ContestException("Удаление возможно только из конкурсов на этапе приёма работ");
             }
-            
+
             $fileName = Config::UPLOAD_PATH . $image->id . ".jpg";
             unlink($fileName);
             $this->mDb->removeImageFromContest($image->contest_id, $image->id);
             $this->mDb->decreaseUserBalance($image->user_id);
         }
     }
-    
+
     /**
      * Меняет "новую тему" у своего изображения
      * @param id $id id изображения для смены темы
@@ -404,30 +414,30 @@ class ContestMgmt {
             if (!isset($image)) {
                 throw new ContestException("Указанного изображения не существует");
             }
-        
+
             $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
             if (!$this->isUserOwnerPhoto($image, $user)) {
                 throw new ContestException("Вы не владелец этого изображения");
             }
-        
+
             $contest = $this->mDb->getContest($image->contest_id);
             if (!isset($contest)) {
                 throw new ContestException("Конкурса не существует");
             }
-        
+
             if (!$this->isContestOpen($contest)) {
                 throw new ContestException("Изменение темы возможно только в конкурсах на этапе приёма работ");
             }
-            
+
             $body = json_decode($body);
             if (!isset($body) || !isset($body->subject) || strlen($body->subject) == 0) {
                 throw new ContestException("Незадана новая тема");
             }
-            
+
             $this->mDb->updateImageSubject($id, $body->subject);
         }
     }
-    
+
     /**
      * @param Contest объект содержащий информацию о конкурсе
      * @return boolean true если конкурс открыт для колосования
