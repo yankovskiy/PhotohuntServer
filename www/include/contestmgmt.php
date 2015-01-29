@@ -133,6 +133,16 @@ class ContestMgmt {
 
         return $success;
     }
+    
+    /**
+     * Получает количество оставшихся голосов у пользователя для конкретного конкурса
+     * @param User $user объект содержащий информацию о пользователе
+     * @param Contest $contest объект содержащий информацию о конкурсе
+     * @return int количество оставшихся голосов у пользователя в рамках конкурса
+     */
+    private function getVoteCount($user, $contest) {
+        return Contest::MAX_VOTES - $this->mDb->getVoteCount($user->id, $contest->id);
+    }
 
     /**
      * Получить полную информацию о конкурсе (вместе с картинками)
@@ -145,11 +155,11 @@ class ContestMgmt {
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
             $contest = $this->mDb->getContest($id);
-            $isClosed = $contest->status == Contest::STATUS_CLOSE;
 
             if (isset($contest)) {
+                $isClosed = $this->isContestClose($contest);
                 $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
-                $votes = $user->vote_count;
+                $votes = $this->getVoteCount($user, $contest);
                 $images = $this->mDb->getImagesForContest($id, $isClosed);
 
                 if ($images != null) {
@@ -338,7 +348,7 @@ class ContestMgmt {
         if ($auth->authenticate($this->mDb)) {
             $contest = $this->mDb->getContest($id);
             // конкурс существует и он в статусе "голосование"
-            if (isset($contest) && $this->isContestVoteForOpen($contest)) {
+            if (isset($contest) && $this->isContestOpenForVote($contest)) {
                 $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
                 // пользователь существует
                 if (isset($user)) {
@@ -439,10 +449,18 @@ class ContestMgmt {
     }
 
     /**
-     * @param Contest объект содержащий информацию о конкурсе
+     * @param Contest $contest объект содержащий информацию о конкурсе
+     * @return boolean true если конкурс закрыт
+     */
+    private function isContestClose($contest) {
+        return $contest->status == Contest::STATUS_CLOSE;
+    }
+    
+    /**
+     * @param Contest $contest объект содержащий информацию о конкурсе
      * @return boolean true если конкурс открыт для колосования
      */
-    private function isContestVoteForOpen($contest) {
+    private function isContestOpenForVote($contest) {
         return $contest->status == Contest::STATUS_VOTES;
     }
 

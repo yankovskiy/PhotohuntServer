@@ -33,13 +33,6 @@ class UserMgmgt {
         $this->mDb = new Database();
         $this->mDb->connect();
     }
-    
-    /**
-     * Сбрасывает количество голосов для всех пользователей на значение по умолчанию
-     */
-    public function resetVoteCount() {
-        $this->mDb->usersResetVoteCount();
-    }
 
     /**
      * Получает рейтинг (top10) пользователей
@@ -76,7 +69,6 @@ class UserMgmgt {
                 $sendData = array();
                 $sendData["user_id"] = $user->user_id;
                 $sendData["display_name"] = $user->display_name;
-                $sendData["vote_count"] = $user->vote_count;
                 $sendData["balance"] = $user->balance;
                 echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
                 $success = true;

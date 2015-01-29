@@ -79,14 +79,6 @@ class Database {
     }
 
     /**
-     * Сбрасывает количество голосов для всех пользователей на значение по умолчанию
-     */
-    public function usersResetVoteCount() {
-        $query = "update users set vote_count = 3";
-        $stmt = $this->mConnection->query($query);
-    }
-
-    /**
      * Создает новый конкурс
      * Создает новый конкурс с темой заданной победителем в предыдущем конкурсе
      * Начисляет очки победителю
@@ -381,7 +373,7 @@ class Database {
         $stmt = $this->mConnection->prepare($query);
         $stmt->execute($params);
     }
-    
+
     /**
      * Меняет информацию о пользователе
      * @param User $userInfo новая информация о пользователе. Изменить можно только display_name,
@@ -425,8 +417,8 @@ class Database {
         $currentRecord = $this->getUserById($userInfo->id);
         if (isset($currentRecord)) {
             $query = "update users set `display_name` = :display_name, `password` = :password, " .
-                    "`balance` = :balance, `group` = :group, `user_id` = :user_id, " .
-                    "`vote_count` = :vote_count where id = :id";
+                    "`balance` = :balance, `group` = :group, `user_id` = :user_id " .
+                    "where id = :id";
             $stmt = $this->mConnection->prepare($query);
 
             $password = (isset($userInfo->password)) ? $userInfo->password : $currentRecord->password;
@@ -436,7 +428,6 @@ class Database {
             $stmt->bindParam(":id", $userInfo->id);
             $stmt->bindParam(":group", $userInfo->group);
             $stmt->bindParam(":user_id", $userInfo->user_id);
-            $stmt->bindParam(":vote_count", $userInfo->vote_count);
 
             $success = $stmt->execute();
         }
@@ -450,8 +441,8 @@ class Database {
      */
     public function adminAddUser($userInfo) {
         $success = false;
-        $query = "insert into `users` (`display_name`, `password`, `balance`, `group`, `user_id`, `vote_count`) ".
-                "values (:display_name, :password, :balance, :group, :user_id, :vote_count)";
+        $query = "insert into `users` (`display_name`, `password`, `balance`, `group`, `user_id`) ".
+                "values (:display_name, :password, :balance, :group, :user_id)";
 
         $stmt = $this->mConnection->prepare($query);
 
@@ -460,7 +451,6 @@ class Database {
         $stmt->bindParam(":balance", $userInfo->balance);
         $stmt->bindParam(":group", $userInfo->group);
         $stmt->bindParam(":user_id", $userInfo->user_id);
-        $stmt->bindParam(":vote_count", $userInfo->vote_count);
 
         $success = $stmt->execute();
 
@@ -620,7 +610,7 @@ class Database {
 
         return $contest;
     }
-    
+
     /**
      * Получает информацию о всех открытых конкурсах
      * @return array массив объектов Contest содержащий информацию о всех открытых конкурсах, либо null если конкурсов нет
@@ -628,11 +618,11 @@ class Database {
     public function getOpenContests() {
         $query = "select * from view_contests where status != :status order by id desc";
         $contests = null;
-        
+
         $stmt = $this->mConnection->prepare($query);
         $params = array("status" => Contest::STATUS_CLOSE);
         $stmt->execute($params);
-        
+
         if ($stmt != false) {
             $contests = array();
             while($row = $stmt->fetch()) {
@@ -640,7 +630,7 @@ class Database {
                 $contests[] = $contest;
             }
         }
-        
+
         return $contests;
     }
 
@@ -671,6 +661,27 @@ class Database {
         }
 
         return $images;
+    }
+
+    /**
+     * Получает количество потраченных голосов пользователя в определенном конкурсе
+     * @param int $userId id пользователя
+     * @param int $contestId id конкурса
+     * @return int количество потраченных голосов пользователя
+     */
+    public function getVoteCount($userId, $contestId) {
+        $count = 0;
+
+        $sql = "SELECT count(id) as count FROM `view_votes` WHERE contest_id = :contest_id and user_id = :user_id";
+        $params = array("contest_id" => $contestId, "user_id" => $userId);
+        $stmt = $this->mConnection->prepare($sql);
+        if($stmt->execute($params)) {
+            if($row = $stmt->fetch()) {
+                $count = $row["count"];
+            }
+        }
+
+        return $count;
     }
 
     /**
@@ -709,9 +720,10 @@ class Database {
         $imageId = $image->id;
         $userId = $user->id;
         $error = null;
+        $votes = Contest::MAX_VOTES - $this->getVoteCount($userId, $image->contest_id);
 
         // если пользователь не истратил все голоса
-        if ($user->vote_count > 0) {
+        if ($votes > 0) {
             $query = "select id from votes where user_id = :user_id and image_id = :image_id";
             $stmt = $this->mConnection->prepare($query);
             $params = array("user_id" => $userId, "image_id" => $imageId);
@@ -730,16 +742,11 @@ class Database {
                     $addVoteParams = array("user_id" => $userId, "image_id"=>$imageId, "from" => $from);
                     $addVoteStmt = $this->mConnection->prepare($addVoteQuery);
                     $addVoteStmt->execute($addVoteParams);
-                    
+
                     $updateImageQuery = "update images set vote_count = vote_count + 1 where id = :id";
                     $updateImageParams = array("id" => $imageId);
                     $updateImageStmt = $this->mConnection->prepare($updateImageQuery);
                     $updateImageStmt->execute($updateImageParams);
-                    
-                    $updateUserQuery = "update users set vote_count = vote_count - 1 where id = :id";
-                    $updateUserParams = array("id" => $userId);
-                    $updateUserStmt = $this->mConnection->prepare($updateUserQuery);
-                    $updateUserStmt->execute($updateUserParams);
 
                     $this->mConnection->commit();
                     $success = true;
@@ -753,7 +760,7 @@ class Database {
         } else {
             $error = "У вас нет очков голосования";
         }
-        
+
         return array("status" => $success, "error" => $error);
     }
 

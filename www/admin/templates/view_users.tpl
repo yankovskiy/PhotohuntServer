@@ -5,7 +5,6 @@
 <td>Пользователь</td>
 <td>Отображаемое имя</td>
 <td>Баланс</td>
-<td>Очков голосования</td>
 <td>Группа</td>
 <td>Действие</td>
 </tr>
@@ -14,7 +13,6 @@
 <td>{$users[user].user_id}</td>
 <td>{$users[user].display_name}</td>
 <td>{$users[user].balance}</td>
-<td>{$users[user].vote_count}</td>
 <td>{$users[user].group}</td>
 <td>
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=user&action=edit&id={$users[user].id}">Редактировать</a> |

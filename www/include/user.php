@@ -25,7 +25,6 @@ class User {
     public $display_name;
     public $password;
     public $balance;
-    public $vote_count;
     public $hash;
     public $group;
 
@@ -41,7 +40,6 @@ class User {
             $this->display_name = $row["display_name"];
             $this->password = $row["password"];
             $this->balance = $row["balance"];
-            $this->vote_count = $row["vote_count"];
             $this->hash = $row["hash"];
             $this->group = $row["group"];
         }

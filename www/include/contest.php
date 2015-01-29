@@ -24,6 +24,8 @@ class Contest {
     const STATUS_OPEN = 1;
     const STATUS_VOTES = 2;
     
+    const MAX_VOTES = 3;
+    
     public $id;
     public $subject;
     public $rewards;
