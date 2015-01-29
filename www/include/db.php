@@ -101,7 +101,7 @@ class Database {
                     $params = array("user_id" => $user_id, "subject" => $subject, "close_date" => $close_date);
                     $stmt2 = $this->mConnection->prepare($query);
                     if($stmt2->execute($params)) {
-                        $query = "update users set balance = balance + :rewards, `money` = :rewards where id = :user_id";
+                        $query = "update users set balance = balance + :rewards, `money` = `money` + :rewards where id = :user_id";
                         $params = array("user_id" => $user_id, "rewards" => $rewards);
                         $stmt = $this->mConnection->prepare($query);
                         $result = $stmt->execute($params);
