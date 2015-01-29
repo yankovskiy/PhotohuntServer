@@ -33,7 +33,7 @@ class Database {
      * @param int $userId id пользователя
      */
     public function incrementUserBalance($userId) {
-        $query = "update users set balance = balance + 1 where id = :user_id";
+        $query = "update users set balance = balance + 1, `money` = `money` + 1 where id = :user_id";
         $stmt = $this->mConnection->prepare($query);
         $params = array("user_id" => $userId);
         $stmt->execute($params);
@@ -44,7 +44,7 @@ class Database {
      * @param int $userId id пользователя
      */
     public function decreaseUserBalance($userId) {
-        $query = "update users set balance = balance - 1 where id = :user_id";
+        $query = "update users set balance = balance - 1, `money` = `money` - 1 where id = :user_id";
         $stmt = $this->mConnection->prepare($query);
         $params = array("user_id" => $userId);
         $stmt->execute($params);
@@ -101,7 +101,7 @@ class Database {
                     $params = array("user_id" => $user_id, "subject" => $subject, "close_date" => $close_date);
                     $stmt2 = $this->mConnection->prepare($query);
                     if($stmt2->execute($params)) {
-                        $query = "update users set balance = balance + :rewards where id = :user_id";
+                        $query = "update users set balance = balance + :rewards, `money` = :rewards where id = :user_id";
                         $params = array("user_id" => $user_id, "rewards" => $rewards);
                         $stmt = $this->mConnection->prepare($query);
                         $result = $stmt->execute($params);
@@ -386,19 +386,17 @@ class Database {
         $currentRecord = $this->getUserByUserId($userInfo->user_id);
         if (isset($currentRecord)) {
             $query = "update users set display_name = :display_name, password = :password, " .
-                    "balance = :balance, hash = :hash where user_id = :user_id";
+                    "hash = :hash where user_id = :user_id";
             $stmt = $this->mConnection->prepare($query);
 
             $stmt->bindParam(":display_name", $display_name);
             $stmt->bindParam(":password", $password);
-            $stmt->bindParam(":balance", $balance);
-            $stmt->bindParam(":user_id", $user_id);
             $stmt->bindParam(":hash", $hash);
+            $stmt->bindParam(":user_id", $user_id);
 
             $user_id = $userInfo->user_id;
             $display_name = (isset($userInfo->display_name)) ? $userInfo->display_name : $currentRecord->display_name;
             $password = (isset($userInfo->password)) ? $userInfo->password : $currentRecord->password;
-            $balance = (isset($userInfo->balance)) ? $userInfo->balance : $currentRecord->balance;
             $hash = (isset($userInfo->hash)) ? $userInfo->hash : $currentRecord->hash;
 
             $success = $stmt->execute();
@@ -417,7 +415,8 @@ class Database {
         $currentRecord = $this->getUserById($userInfo->id);
         if (isset($currentRecord)) {
             $query = "update users set `display_name` = :display_name, `password` = :password, " .
-                    "`balance` = :balance, `group` = :group, `user_id` = :user_id " .
+                    "`balance` = :balance, `group` = :group, `user_id` = :user_id, " .
+                    "`money` = :money, `dc` = :dc " .
                     "where id = :id";
             $stmt = $this->mConnection->prepare($query);
 
@@ -428,6 +427,8 @@ class Database {
             $stmt->bindParam(":id", $userInfo->id);
             $stmt->bindParam(":group", $userInfo->group);
             $stmt->bindParam(":user_id", $userInfo->user_id);
+            $stmt->bindParam(":money", $userInfo->money);
+            $stmt->bindParam(":dc", $userInfo->dc);
 
             $success = $stmt->execute();
         }
@@ -441,8 +442,8 @@ class Database {
      */
     public function adminAddUser($userInfo) {
         $success = false;
-        $query = "insert into `users` (`display_name`, `password`, `balance`, `group`, `user_id`) ".
-                "values (:display_name, :password, :balance, :group, :user_id)";
+        $query = "insert into `users` (`display_name`, `password`, `balance`, `group`, `user_id`, `money`, `dc`) ".
+                "values (:display_name, :password, :balance, :group, :user_id, :money, :dc)";
 
         $stmt = $this->mConnection->prepare($query);
 
@@ -451,6 +452,8 @@ class Database {
         $stmt->bindParam(":balance", $userInfo->balance);
         $stmt->bindParam(":group", $userInfo->group);
         $stmt->bindParam(":user_id", $userInfo->user_id);
+        $stmt->bindParam(":money", $userInfo->money);
+        $stmt->bindParam(":dc", $userInfo->dc);
 
         $success = $stmt->execute();
 

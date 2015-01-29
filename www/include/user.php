@@ -27,6 +27,8 @@ class User {
     public $balance;
     public $hash;
     public $group;
+    public $money;
+    public $dc;
 
     /**
      * Конструктор
@@ -42,6 +44,8 @@ class User {
             $this->balance = $row["balance"];
             $this->hash = $row["hash"];
             $this->group = $row["group"];
+            $this->money = $row["money"];
+            $this->dc = $row["dc"];
         }
     }
 

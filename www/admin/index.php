@@ -294,6 +294,8 @@ class Admin {
             $user->display_name = $_POST["display_name"];
             $user->group = $_POST["group"];
             $user->user_id = $_POST["user_id"];
+            $user->money = $_POST["money"];
+            $user->dc = $_POST["dc"];
 
             if (strlen($_POST["password"]) > 0) {
                 $user->password = Auth::crypt($user->user_id, $_POST["password"]);
@@ -322,6 +324,8 @@ class Admin {
             $user->group = $_POST["group"];
             $user->user_id = $_POST["user_id"];
             $user->password = Auth::crypt($user->user_id, $_POST["password"]);
+            $user->money = $_POST["money"];
+            $user->dc = $_POST["dc"];
 
             $this->mDb->adminAddUser($user);
             $this->printAllUsers();

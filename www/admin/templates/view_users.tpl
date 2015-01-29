@@ -6,6 +6,8 @@
 <td>Отображаемое имя</td>
 <td>Баланс</td>
 <td>Группа</td>
+<td>Деньги</td>
+<td>DC</td>
 <td>Действие</td>
 </tr>
 {section name=user loop=$users}
@@ -14,6 +16,8 @@
 <td>{$users[user].display_name}</td>
 <td>{$users[user].balance}</td>
 <td>{$users[user].group}</td>
+<td>{$users[user].money}</td>
+<td>{$users[user].dc}</td>
 <td>
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=user&action=edit&id={$users[user].id}">Редактировать</a> |
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=user&action=delete&id={$users[user].id}">Удалить</a>

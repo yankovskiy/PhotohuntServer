@@ -9,6 +9,8 @@
 <td>Отображаемое имя</td>
 <td>Баланс</td>
 <td>Группа</td>
+<td>Деньги</td>
+<td>DC</td>
 <td>Новый пароль</td>
 </tr>
 <tr>
@@ -16,9 +18,11 @@
 <td><input type="text" name="display_name" value="{$user.display_name}"></td>
 <td><input type="text" name="balance" value="{$user.balance}"></td>
 <td><select name="group">{html_options values=$group_option_values selected=$group_option_selected output=$group_option_output}</select></td>
+<td><input type="text" name="money" value="{$user.money}"></td>
+<td><input type="text" name="dc" value="{$user.dc}"></td>
 <td><input type="text" name="password" value=""></td></tr>
 <tr>
-<td colspan=5 align=center><input type="submit" name="submit" value="OK"></td>
+<td colspan=7 align=center><input type="submit" name="submit" value="OK"></td>
 </tr>
 </table>
 </form>
