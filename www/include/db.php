@@ -120,7 +120,7 @@ class Database {
      * Создает новый конкурс
      * @param Contest $contestInfo объект содержащий информацию по добавляемому конкурсу
      */
-    public function addContest($contestInfo) {
+    public function adminAddContest($contestInfo) {
         $query = "insert into contests (subject, close_date, user_id, rewards, status) values (:subject, :close_date, :user_id, :rewards, :status)";
         $params = array("subject" => $contestInfo->subject, "close_date" => $contestInfo->close_date,
                 "user_id" => $contestInfo->user_id, "rewards" => $contestInfo->rewards,
@@ -386,18 +386,20 @@ class Database {
         $currentRecord = $this->getUserByUserId($userInfo->user_id);
         if (isset($currentRecord)) {
             $query = "update users set display_name = :display_name, password = :password, " .
-                    "hash = :hash where user_id = :user_id";
+                    "hash = :hash, insta = :insta where user_id = :user_id";
             $stmt = $this->mConnection->prepare($query);
 
             $stmt->bindParam(":display_name", $display_name);
             $stmt->bindParam(":password", $password);
             $stmt->bindParam(":hash", $hash);
             $stmt->bindParam(":user_id", $user_id);
+            $stmt->bindParam(":insta", $insta);
 
             $user_id = $userInfo->user_id;
             $display_name = (isset($userInfo->display_name)) ? $userInfo->display_name : $currentRecord->display_name;
             $password = (isset($userInfo->password)) ? $userInfo->password : $currentRecord->password;
             $hash = (isset($userInfo->hash)) ? $userInfo->hash : $currentRecord->hash;
+            $insta = (isset($userInfo->insta)) ? $userInfo->insta : $currentRecord->insta;
 
             $success = $stmt->execute();
         }
@@ -416,7 +418,7 @@ class Database {
         if (isset($currentRecord)) {
             $query = "update users set `display_name` = :display_name, `password` = :password, " .
                     "`balance` = :balance, `group` = :group, `user_id` = :user_id, " .
-                    "`money` = :money, `dc` = :dc " .
+                    "`money` = :money, `dc` = :dc, insta = :insta " .
                     "where id = :id";
             $stmt = $this->mConnection->prepare($query);
 
@@ -429,6 +431,7 @@ class Database {
             $stmt->bindParam(":user_id", $userInfo->user_id);
             $stmt->bindParam(":money", $userInfo->money);
             $stmt->bindParam(":dc", $userInfo->dc);
+            $stmt->bindParam(":insta", $userInfo->insta);
 
             $success = $stmt->execute();
         }
@@ -442,8 +445,8 @@ class Database {
      */
     public function adminAddUser($userInfo) {
         $success = false;
-        $query = "insert into `users` (`display_name`, `password`, `balance`, `group`, `user_id`, `money`, `dc`) ".
-                "values (:display_name, :password, :balance, :group, :user_id, :money, :dc)";
+        $query = "insert into `users` (`display_name`, `password`, `balance`, `group`, `user_id`, `money`, `dc`, `insta`) ".
+                "values (:display_name, :password, :balance, :group, :user_id, :money, :dc, :insta)";
 
         $stmt = $this->mConnection->prepare($query);
 
@@ -454,6 +457,7 @@ class Database {
         $stmt->bindParam(":user_id", $userInfo->user_id);
         $stmt->bindParam(":money", $userInfo->money);
         $stmt->bindParam(":dc", $userInfo->dc);
+        $stmt->bindParam(":insta", $userInfo->insta);
 
         $success = $stmt->execute();
 

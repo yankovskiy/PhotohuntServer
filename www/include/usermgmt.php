@@ -70,6 +70,7 @@ class UserMgmgt {
                 $sendData["user_id"] = $user->user_id;
                 $sendData["display_name"] = $user->display_name;
                 $sendData["balance"] = $user->balance;
+                $sendData["insta"] = $user->insta;
                 echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
                 $success = true;
             }
@@ -108,7 +109,7 @@ class UserMgmgt {
     }
 
     /**
-     * Обновляет информацию о пользователе. Клиент может обновить только пароль и отображаемое имя
+     * Обновляет информацию о пользователе. Клиент может обновить только пароль, отображаемое имя, instagram - профиль
      * @param string $userId идентификатор пользователя для обновления информации
      * @param json_data $body тело сообщения содержащее информацию по обновляемому пользователю
      * @return boolean true в случае успешного обновления пользователя
@@ -128,6 +129,10 @@ class UserMgmgt {
 
                 if (isset($body->password)) {
                     $user->password = Auth::crypt($user->user_id, $body->password);
+                }
+                
+                if (isset($body->insta)) {
+                    $user->insta = $body->insta;
                 }
 
                 $success = $this->mDb->updateUser($user);

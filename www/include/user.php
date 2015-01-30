@@ -29,6 +29,7 @@ class User {
     public $group;
     public $money;
     public $dc;
+    public $insta;
 
     /**
      * Конструктор
@@ -46,6 +47,7 @@ class User {
             $this->group = $row["group"];
             $this->money = $row["money"];
             $this->dc = $row["dc"];
+            $this->insta = $row["insta"];
         }
     }
 

@@ -229,7 +229,7 @@ class Admin {
             $contestInfo->user_id = $_POST["user_id"];
             $contestInfo->status = $_POST["status"];
             $contestInfo->rewards = $_POST["rewards"];
-            $this->mDb->addContest($contestInfo);
+            $this->mDb->adminAddContest($contestInfo);
             $this->printAllContest();
         } else {
             $user_option_selected = 1; // System user id
@@ -296,6 +296,7 @@ class Admin {
             $user->user_id = $_POST["user_id"];
             $user->money = $_POST["money"];
             $user->dc = $_POST["dc"];
+            $user->insta = $_POST["insta"];
 
             if (strlen($_POST["password"]) > 0) {
                 $user->password = Auth::crypt($user->user_id, $_POST["password"]);
@@ -326,6 +327,7 @@ class Admin {
             $user->password = Auth::crypt($user->user_id, $_POST["password"]);
             $user->money = $_POST["money"];
             $user->dc = $_POST["dc"];
+            $user->insta = $_POST["insta"];
 
             $this->mDb->adminAddUser($user);
             $this->printAllUsers();

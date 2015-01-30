@@ -8,6 +8,7 @@
 <td>Группа</td>
 <td>Деньги</td>
 <td>DC</td>
+<td>Instagram</td>
 <td>Действие</td>
 </tr>
 {section name=user loop=$users}
@@ -18,6 +19,7 @@
 <td>{$users[user].group}</td>
 <td>{$users[user].money}</td>
 <td>{$users[user].dc}</td>
+<td>{$users[user].insta}</td>
 <td>
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=user&action=edit&id={$users[user].id}">Редактировать</a> |
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=user&action=delete&id={$users[user].id}">Удалить</a>
