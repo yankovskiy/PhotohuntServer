@@ -163,6 +163,8 @@ class ContestMgmt {
                 $images = $this->mDb->getImagesForContest($id, $isClosed);
 
                 if ($images != null) {
+                    $count = 0; // если конкурс закрыт первая работа в списке победитель
+                    
                     foreach ($images as $image) {
                         if ($contest->status == Contest::STATUS_OPEN && $this->isUserOwnerPhoto($image, $user)) {
                             $image->is_editable = true;
@@ -179,6 +181,17 @@ class ContestMgmt {
                             unset($image->display_name);
                             unset($image->vote_count);
                         }
+                        
+                        /*
+                         * Конкурс закрыт, скрыть темы чужих работ и работ не победивших
+                         */
+                        if ($isClosed) {
+                            if ($count > 0 && $this->isUserOwnerPhoto($image, $user) == false) {
+                                unset($image->subject);
+                            }
+                        }
+                        
+                        $count++;
                     }
                 }
 
