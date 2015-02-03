@@ -161,12 +161,25 @@ class ContestMgmt {
                 $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
                 $votes = $this->getVoteCount($user, $contest);
                 $images = $this->mDb->getImagesForContest($id, $isClosed);
-
+                $voteList = $this->mDb->getContestVotesByUser($contest->id, $user->id);
+                
                 if ($images != null) {
                     $count = 0; // если конкурс закрыт первая работа в списке победитель
                     
                     foreach ($images as $image) {
-                        if ($contest->status == Contest::STATUS_OPEN && $this->isUserOwnerPhoto($image, $user)) {
+                        if ($this->isContestOpenForVote($contest)) {
+                            $image->is_voted = false;
+                            
+                            if (isset($voteList)) {
+                                if (in_array($image->id, $voteList)) {
+                                    $image->is_voted = true;
+                                }
+                            }
+                        } else {
+                            unset($image->is_voted);
+                        }
+                        
+                        if ($this->isContestOpen($contest) && $this->isUserOwnerPhoto($image, $user)) {
                             $image->is_editable = true;
                         } else {
                             $image->is_editable = false;

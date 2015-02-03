@@ -27,6 +27,7 @@ class Image{
     public $display_name;
     public $vote_count;
     public $is_editable;
+    public $is_voted;
     
     /**
      * Конструктор
