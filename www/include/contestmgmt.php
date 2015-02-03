@@ -346,6 +346,56 @@ class ContestMgmt {
     }
 
     /**
+     * Голосование за изображение в конкурсе. Проголосовать можно только за изображение в конкурсе
+     * со статусом "идет голосование". За свои работы голосовать нельзя.
+     * @param int $id id конкурса
+     * @param json_data $body тело сообщения содержащие информацию по изображению за которое голосуется
+     */
+    public function voteForContest($id, $body) {
+        $success = false;
+        $error = null;
+    
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $contest = $this->mDb->getContest($id);
+            if (!isset($contest)) {
+                throw new ContestException("Выбранного конкурса не существует");
+            }
+            
+            if (!$this->isContestOpenForVote($contest)) {
+                throw new ContestException("Сейчас не этап голосования за работы");
+            }
+            
+            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            if (!isset($user)) {
+                throw new ContestException("Несуществующий пользователь");
+            }
+            
+            $body = json_decode($body);
+            if (!isset($body) || !isset($body->id)) {
+                throw new ContestException("Не задано тело сообщения");
+            }
+            
+            $image = $this->mDb->getImageById($body->id);
+            if (!isset($image)) {
+                throw new ContestException("Несуществующее изображение");
+            }
+            
+            if ($this->isUserOwnerPhoto($image, $user)) {
+                throw new ContestException("За свои работы голосовать нельзя");
+            }
+            
+            if ($image->contest_id != $id) {
+                throw new ContestException("В выбранном конкурсе нет такой работы");
+            }
+            
+            $this->mDb->voteForImage($image, $user, Common::getClientIp());
+        }
+    
+    }
+    
+    /**
+     * @deprecated
      * Голосование за изображение на конкурсе. Проголосовать можно только за изображение в конкурсе
      * со статусом "идет голосование". За свои работы голосовать нельзя.
      * @param int $id id конкурса
@@ -353,7 +403,7 @@ class ContestMgmt {
      * @return array(status, error) status boolean true в случае успешного голосования за работу,
      * string error содержит текст ошибки
      */
-    public function voteForContest($id, $body) {
+    public function voteForContest_api13($id, $body) {
         $success = false;
         $error = null;
 
@@ -372,7 +422,7 @@ class ContestMgmt {
                         // картинка существует и пользователь не ее владелец
                         if (isset($image) && $this->isUserOwnerPhoto($image, $user) == false) {
                             if ($image->contest_id == $id) {
-                                $status = $this->mDb->voteForImage($image, $user, Common::getClientIp());
+                                $status = $this->mDb->voteForImage_api13($image, $user, Common::getClientIp());
                                 $success = $status["status"];
                                 $error = $status["error"];
                             } else {

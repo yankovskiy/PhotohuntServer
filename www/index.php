@@ -28,229 +28,238 @@ $app->notFound(function () use ($app) {
     $app->halt(404);
 });
 
-/* user management */
-$app->get('/user/:id', 'getUser');                     // получение информации о пользователе
-$app->put('/user/:id', 'updateUser');                  // изменение информации о пользователе
-$app->post('/user', 'addUser');                        // регистрация пользователя
-$app->delete('/user/:id', 'deleteUser');               // удаление пользователя
-$app->put('/reset', 'generateHash');                   // генерация ссылки для сброса пароля
-$app->get('/reset/:cryptUser/:hash', 'sendPassword');  // сброс пароля
-$app->get('/user', 'getRating');                       // рейтинг пользователей (top 10)
+    /* user management */
+    $app->get('/user/:id', 'getUser');                     // получение информации о пользователе
+    $app->put('/user/:id', 'updateUser');                  // изменение информации о пользователе
+    $app->post('/user', 'addUser');                        // регистрация пользователя
+    $app->delete('/user/:id', 'deleteUser');               // удаление пользователя
+    $app->put('/reset', 'generateHash');                   // генерация ссылки для сброса пароля
+    $app->get('/reset/:cryptUser/:hash', 'sendPassword');  // сброс пароля
+    $app->get('/user', 'getRating');                       // рейтинг пользователей (top 10)
 
-/* contest management */
-$app->get('/contests', 'getContests');            // список всех конкурсов
-$app->get('/contest', 'getOpenContests');         // получить информацию об открытых конкурсах
-$app->get('/contest/:id', 'getContestDetails');   // получить детальную информацию по указанном конкурсе
-$app->post('/contest/:id', 'addImageToContest');  // добавить фотографию в открытый конкурс
-$app->put('/contest/:id', 'voteForContest');      // голосование за изображение
-$app->delete('/image/:id', 'deleteImage');        // удаление своего изображения
-$app->put('/image/:id', 'updateImage');           // изменение информации о своем изображении
+    /* contest management */
+    $app->get('/contests', 'getContests');            // список всех конкурсов
+    $app->get('/contest', 'getOpenContests');         // получить информацию об открытых конкурсах
+    $app->get('/contest/:id', 'getContestDetails');   // получить детальную информацию по указанном конкурсе
+    $app->post('/contest/:id', 'addImageToContest');  // добавить фотографию в открытый конкурс
+    $app->put('/contest/:id', 'voteForContest');      // голосование за изображение
+    $app->delete('/image/:id', 'deleteImage');        // удаление своего изображения
+    $app->put('/image/:id', 'updateImage');           // изменение информации о своем изображении
 
-$app->run();
+    $app->run();
 
-function deleteImage($id) {
-    $contest = new ContestMgmt();
-    $app = \Slim\Slim::getInstance();
-    try {
-        $contest->conenctToDb();
-        $contest->deleteImage($id);
-    } catch (ContestException $e) {
-        $error = array("status" => false, "error" => $e->getMessage());
-        $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
-    } catch (PDOException $e) {
-        $app->halt(500);
-    }
-}
-
-function updateImage($id) {
-    $contest = new ContestMgmt();
-    $app = \Slim\Slim::getInstance();
-    $body = $app->request()->getBody();
-    try {
-        $contest->conenctToDb();
-        $contest->updateImage($id, $body);
-    } catch (ContestException $e) {
-        $error = array("status" => false, "error" => $e->getMessage());
-        $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
-    } catch (PDOException $e) {
-        $app->halt(500);
-    }
-}
-
-function getRating() {
-    $user = new UserMgmgt();
-    $app = \Slim\Slim::getInstance();
-    try {
-        $user->connectToDb();
-        $user->getRating();
-    } catch (PDOException $e) {
-        $app->halt(500);
-    }
-}
-
-function getUser($id) {
-    $user = new UserMgmgt();
-    $app = \Slim\Slim::getInstance();
-    
-    try {
-        $user->connectToDb();
-        if ($user->getUser($id) == false) {
-            $app->halt(404);
+    function deleteImage($id) {
+        $contest = new ContestMgmt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $contest->conenctToDb();
+            $contest->deleteImage($id);
+        } catch (ContestException $e) {
+            $error = array("status" => false, "error" => $e->getMessage());
+            $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+        } catch (PDOException $e) {
+            $app->halt(500);
         }
-        
-    } catch (PDOException $e) {
-        $app->halt(500);
     }
-}
 
-function addUser() {
-    $user = new UserMgmgt();
-    $app = \Slim\Slim::getInstance();
-    
-    try {
-        $user->connectToDb();
-        if ($user->addUser($app->request()->getBody())) {
-            $app->halt(200);
-        } else {
-            $app->halt(403);
-        }
-    } catch (PDOException $e) {
-        $app->halt(500);
-    } 
-}
-
-function updateUser($id) {
-    $user = new UserMgmgt();
-    $app = \Slim\Slim::getInstance();
-    $body = $app->request()->getBody();
-    
-    try {
-        $user->connectToDb();
-        if ($user->updateUser($id, $body)) {
-            $app->halt(200);
-        } else {
-            $app->halt(403);
-        }
-    } catch (PDOException $e) {
-        $app->halt(500);
-    }
-}
-
-function deleteUser($id) {
-    $user = new UserMgmgt();
-    $app = \Slim\Slim::getInstance();
-    try {
-        $user->connectToDb();
-        if ($user->deleteUser($id)) {
-            $app->halt(200);
-        } else {
-            $app->halt(403);
-        }
-    } catch (PDOException $e) {
-        $app->halt(500);
-    }
-}
-
-function getContests() {
-    $contest = new ContestMgmt();
-    $app = \Slim\Slim::getInstance();
-    try {
-        $contest->conenctToDb();
-        if($contest->getContests() == false) {
-            $app->halt(403);
-        }
-    } catch (PDOException $e) {
-        $app->halt(500);
-    }
-}
-
-function getContestDetails($id) {
-    $contest = new ContestMgmt();
-    $app = \Slim\Slim::getInstance();
-    try {
-        $contest->conenctToDb();
-        if($contest->getContestDetails($id) == false) {
-            $app->halt(404);
-        }
-    } catch (PDOException $e) {
-        $app->halt(500);
-    }
-}
-
-function addImageToContest($id) {
-    $contest = new ContestMgmt();
-    $app = \Slim\Slim::getInstance();
-    try {
-        $contest->conenctToDb();
-        $status = $contest->addImageToContest($id);
-        if($status["status"] == false) {
-            $app->halt(403, json_encode($status, JSON_UNESCAPED_UNICODE));
-        }
-    } catch (PDOException $e) {
-        $app->halt(500);
-    }
-}
-
-function voteForContest($id) {
-    $contest = new ContestMgmt();
-    $app = \Slim\Slim::getInstance();
-    try {
-        $contest->conenctToDb();
+    function updateImage($id) {
+        $contest = new ContestMgmt();
+        $app = \Slim\Slim::getInstance();
         $body = $app->request()->getBody();
-        $status = $contest->voteForContest($id, $body); 
-        if($status["status"] == false) {
-            $app->halt(403, json_encode($status, JSON_UNESCAPED_UNICODE));
+        try {
+            $contest->conenctToDb();
+            $contest->updateImage($id, $body);
+        } catch (ContestException $e) {
+            $error = array("status" => false, "error" => $e->getMessage());
+            $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+        } catch (PDOException $e) {
+            $app->halt(500);
         }
-    } catch (PDOException $e) {
-        $app->halt(500);
     }
-}
 
-function generateHash() {
-    $user = new UserMgmgt();
-    $app = \Slim\Slim::getInstance();
-    try {
-        $user->connectToDb();
-        $body = $app->request()->getBody();
-        if ($user->generateHash($body)) {
-            $app->halt(200);
-        } else {
-            $app->halt(404);
+    function getRating() {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $user->connectToDb();
+            $user->getRating();
+        } catch (PDOException $e) {
+            $app->halt(500);
         }
-    } catch (PDOException $e) {
-        $app->halt(500);
     }
-}
 
-function sendPassword($cryptUser, $hash) {
-    $user = new UserMgmgt();
-    $app = \Slim\Slim::getInstance();
-    try {
-        $user->connectToDb();
-        if ($user->sendPassword($cryptUser, $hash) == false) {
-            $app->halt(404);
-        }
-    } catch (PDOException $e) {
-        $app->halt(500);
-    }
-}
+    function getUser($id) {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
 
-function getOpenContests() {
-    $contest = new ContestMgmt();
-    $app = \Slim\Slim::getInstance();
-    try {
-        $contest->conenctToDb();
-        if (Common::getClientVersion() < 8) {
-            if ($contest->getLastContest() == false) {
+        try {
+            $user->connectToDb();
+            if ($user->getUser($id) == false) {
                 $app->halt(404);
             }
-        } else {
-            if ($contest->getOpenContests() == false) {
+
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function addUser() {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+
+        try {
+            $user->connectToDb();
+            if ($user->addUser($app->request()->getBody())) {
+                $app->halt(200);
+            } else {
+                $app->halt(403);
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function updateUser($id) {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+        $body = $app->request()->getBody();
+
+        try {
+            $user->connectToDb();
+            if ($user->updateUser($id, $body)) {
+                $app->halt(200);
+            } else {
+                $app->halt(403);
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function deleteUser($id) {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $user->connectToDb();
+            if ($user->deleteUser($id)) {
+                $app->halt(200);
+            } else {
+                $app->halt(403);
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function getContests() {
+        $contest = new ContestMgmt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $contest->conenctToDb();
+            if($contest->getContests() == false) {
+                $app->halt(403);
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function getContestDetails($id) {
+        $contest = new ContestMgmt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $contest->conenctToDb();
+            if($contest->getContestDetails($id) == false) {
                 $app->halt(404);
             }
+        } catch (PDOException $e) {
+            $app->halt(500);
         }
-        
-    } catch (PDOException $e) {
-        $app->halt(500);
     }
-}
+
+    function addImageToContest($id) {
+        $contest = new ContestMgmt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $contest->conenctToDb();
+            $status = $contest->addImageToContest($id);
+            if($status["status"] == false) {
+                $app->halt(403, json_encode($status, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function voteForContest($id) {
+        $contest = new ContestMgmt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $contest->conenctToDb();
+            $body = $app->request()->getBody();
+            if (Common::getClientVersion() < 13) {
+                $status = $contest->voteForContest_api13($id, $body);
+                if($status["status"] == false) {
+                    $app->halt(403, json_encode($status, JSON_UNESCAPED_UNICODE));
+                }
+            } else {
+                try{
+                    $contest->voteForContest($id, $body);
+                } catch (ContestException $e) {
+                    $error = array("status" => false, "error" => $e->getMessage());
+                    $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+                }
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function generateHash() {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $user->connectToDb();
+            $body = $app->request()->getBody();
+            if ($user->generateHash($body)) {
+                $app->halt(200);
+            } else {
+                $app->halt(404);
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function sendPassword($cryptUser, $hash) {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $user->connectToDb();
+            if ($user->sendPassword($cryptUser, $hash) == false) {
+                $app->halt(404);
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function getOpenContests() {
+        $contest = new ContestMgmt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $contest->conenctToDb();
+            if (Common::getClientVersion() < 8) {
+                if ($contest->getLastContest() == false) {
+                    $app->halt(404);
+                }
+            } else {
+                if ($contest->getOpenContests() == false) {
+                    $app->halt(404);
+                }
+            }
+
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }

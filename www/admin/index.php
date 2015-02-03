@@ -86,7 +86,7 @@ class Admin {
         foreach ($images as $image) {
             $val = array();
             $val["image"] = $image;
-            $val["votes"] = $this->mDb->getVoteListForImage($image["id"]);
+            $val["votes"] = $this->mDb->adminGetVoteListForImage($image["id"]);
             $imageList[] = $val;
         }
 

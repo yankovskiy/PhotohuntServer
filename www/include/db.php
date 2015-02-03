@@ -68,6 +68,30 @@ class Database {
     }
 
     /**
+     * Получает список картинок за которые проголосовал пользователь в рамках конкурса
+     * @param int $contestId id конкурса
+     * @param int $userId id пользователя
+     * @return NULL|multitype:mixed NULL - если пользователь не голосовал, array содержащий список id картинок
+     */
+    public function getContestVotesByUser($contestId, $userId) {
+        $sql = "SELECT image_id FROM `view_votes` where `user_id` = :user_id and `contest_id` = :contest_id";
+        $params = array("user_id" => $userId, "contest_id" => $contestId);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+        $ids = array();
+
+        while($row = $stmt->fetch()) {
+            $ids[] = $row["image_id"];
+        }
+
+        if (count($ids) == 0) {
+            return NULL;
+        } else {
+            return $ids;
+        }
+    }
+
+    /**
      * Удаляет конкурс и все его содержимое со всех таблиц
      * @param int $id id конкурса для удаления
      */
@@ -696,7 +720,7 @@ class Database {
      * @param int $imageId
      * @return массив проголосовавних за изображение
      */
-    public function getVoteListForImage($imageId) {
+    public function adminGetVoteListForImage($imageId) {
         $query = "select u.display_name,u.user_id,v.`from` from users u inner join votes v on u.id = v.user_id where v.image_id = :image_id";
         $param = array("image_id" => $imageId);
         $stmt = $this->mConnection->prepare($query);
@@ -715,13 +739,80 @@ class Database {
 
     /**
      * Голосование за картинку. Функция увеличивает количество проголосовавших за картинку.
-     * Право голоса вычитается из количества голосов у пользователя
+     * Если пользователь уже голосовал за картинку, то с нее списывается его голос.
+     * @param Image $image объект содержащий информацию о картинке за которую голосовать
+     * @param User $user объект содержащий информацию о пользователе
+     * @param String $from IP-адрес клиента
+     */
+    public function voteForImage($image, $user, $from = NULL) {
+        $isAlreadyVoted = false;
+        $imageId = $image->id;
+        $userId = $user->id;
+        $error = null;
+        $votes = Contest::MAX_VOTES - $this->getVoteCount($userId, $image->contest_id);
+
+        $query = "select id from votes where user_id = :user_id and image_id = :image_id";
+        $stmt = $this->mConnection->prepare($query);
+        $params = array("user_id" => $userId, "image_id" => $imageId);
+
+        if ($stmt->execute($params)) {
+            if ($row = $stmt->fetch()) {
+                $isAlreadyVoted = true;
+            }
+        }
+
+        if ($isAlreadyVoted == false) {
+            if ($votes > 0) {
+                $this->mConnection->beginTransaction();
+                try {
+                    $addVoteQuery = "insert into `votes` (`user_id`, `image_id`, `from`) values (:user_id, :image_id, :from)";
+                    $addVoteParams = array("user_id" => $userId, "image_id"=>$imageId, "from" => $from);
+                    $addVoteStmt = $this->mConnection->prepare($addVoteQuery);
+                    $addVoteStmt->execute($addVoteParams);
+
+                    $updateImageQuery = "update images set vote_count = vote_count + 1 where id = :id";
+                    $updateImageParams = array("id" => $imageId);
+                    $updateImageStmt = $this->mConnection->prepare($updateImageQuery);
+                    $updateImageStmt->execute($updateImageParams);
+
+                    $this->mConnection->commit();
+                } catch(PDOException $e) {
+                    $this->mConnection->rollBack();
+                    throw new ContestException("Ошибка при голосовании");
+                }
+            } else {
+                throw new ContestException("У вас нет очков голосования");
+            }
+        } else {
+            $this->mConnection->beginTransaction();
+            try {
+                $deleteVoteQuery = "delete from `votes` where `user_id` = :user_id and `image_id` = :image_id";
+                $deleteVoteParams = array("user_id" => $userId, "image_id"=>$imageId);
+                $deleteVoteStmt = $this->mConnection->prepare($deleteVoteQuery);
+                $deleteVoteStmt->execute($deleteVoteParams);
+
+                $updateImageQuery = "update images set vote_count = vote_count - 1 where id = :id";
+                $updateImageParams = array("id" => $imageId);
+                $updateImageStmt = $this->mConnection->prepare($updateImageQuery);
+                $updateImageStmt->execute($updateImageParams);
+
+                $this->mConnection->commit();
+            } catch(PDOException $e) {
+                $this->mConnection->rollBack();
+                throw new ContestException("Ошибка при отмене голоса");
+            }
+        }
+    }
+
+    /**
+     * @deprecated
+     * Голосование за картинку. Функция увеличивает количество проголосовавших за картинку.
      * @param Image $image объект содержащий информацию о картинке за которую голосовать
      * @param User $user объект содержащий информацию о пользователе
      * @param String $from IP-адрес клиента
      * @return array boolean status true в случае успешного голосования, string error текст ошибки
      */
-    public function voteForImage($image, $user, $from = NULL) {
+    public function voteForImage_api13($image, $user, $from = NULL) {
         $success = false;
         $isAlreadyVoted = false;
         $imageId = $image->id;
