@@ -5,19 +5,23 @@
 <table border=0 cellpadding=5>
 <tr>
 <td>Тема</td>
+<td>Дата начала</td>
 <td>Дата закрытия</td>
 <td>Автор</td>
 <td>Статус</td>
 <td>Награда</td>
+<td>ID предыдущего конкурса / 0</td>
 </tr>
 <tr>
 <td><input type="text" name="subject" value=""></td>
+<td><input type="text" name="open_date" value="{$open_date}"></td>
 <td><input type="text" name="close_date" value="{$close_date}"></td>
 <td><select name="user_id">{html_options values=$user_option_values selected=$user_option_selected output=$user_option_output}</select></td>
 <td><select name="status">{html_options values=$status_option_values selected=$status_option_selected output=$status_option_output}</select></td>
 <td><input type="text" name="rewards" value="5"></td>
+<td><input type="text" name="prev_id" value="0"></td>
 </tr>
-<tr><td colspan=6 align=center><input type="submit" name="submit" value="OK"></td>
+<tr><td colspan=8 align=center><input type="submit" name="submit" value="OK"></td>
 </table>
 </form>
 

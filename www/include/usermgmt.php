@@ -18,6 +18,7 @@
 
 require_once 'db.php';
 require_once 'auth.php';
+require_once 'contest.php';
 
 /**
  * Класс для управления пользователями
@@ -40,7 +41,7 @@ class UserMgmgt {
      */
     public function getRating() {
         $success = false;
-        
+
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
             $ratings = $this->mDb->getRating();
@@ -49,13 +50,51 @@ class UserMgmgt {
                 $success = true;
             }
         }
-        
+
         return $success;
     }
-    
+
     /**
-     * Получает информацию по пользователю по его user_id
-     * @param string $userId user_id
+     * Получает список всех картинок пользователя
+     * @param int $userId id пользователя
+     */
+    public function getUserImages($userId) {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            $images = $this->mDb->getUserImages($userId);
+
+            $sendData = array();
+            foreach ($images as $image) {
+                $status = $image->contest_status;
+                $data = array();
+                $data["id"] = $image->id;
+                $data["contest_id"] = $image->contest_id;
+                $data["contest_subject"] = $image->contest_subject;
+
+                if ($status == Contest::STATUS_CLOSE) {
+                    $data["vote_count"] = $image->vote_count;
+                }
+
+                if ($userId == $user->id) {
+                    $data["subject"] = $image->subject;
+                }
+
+                if ($status == Contest::STATUS_CLOSE || $userId == $user->id) {
+                    $sendData[] = $data;
+                }
+
+            }
+
+            echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * Получает информацию по пользователю по его user_id или Id
+     * В случае запроса по user_id - данные можно запросить только своему пользователю
+     * По id - по любому
+     * @param mixed $userId user_id или id пользователя
      * @return boolean true если пользователь найден
      */
     public function getUser($userId) {
@@ -64,16 +103,42 @@ class UserMgmgt {
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
 
-            $user = $this->mDb->getUserByUserId($userId);
-            if (isset($user)) {
+            $isValid = false;
+            $isSelf = false;
+
+            if (is_numeric($userId)) {
+                $user = $this->mDb->getUserById($userId);
+                $isValid = true;
+                $isSelf = $user->user_id == $auth->getAuthenticatedUserId();
+            } else {
+                $user = $this->mDb->getUserByUserId($userId);
+                $isValid = $userId ==  $auth->getAuthenticatedUserId();
+                $isSelf = $isValid;
+            }
+
+            if (isset($user) && $isValid) {
                 $sendData = array();
-                $sendData["user_id"] = $user->user_id;
+                if ($user->id != 1) {
+                    $sendData["rank"] = $this->mDb->getUserRank($user->id);
+                    $sendData["wins_count"] = $this->mDb->getUserWins($user->id);
+                    $sendData["balance"] = $user->balance;
+                } else {
+                    $sendData["rank"] = 0;
+                    $sendData["wins_count"] = 0;
+                    $sendData["balance"] = 0;
+                }
+                
+                $sendData["id"] = $user->id;
+                if ($isSelf) {
+                    $sendData["user_id"] = $user->user_id;
+                }
                 $sendData["display_name"] = $user->display_name;
-                $sendData["balance"] = $user->balance;
                 $sendData["insta"] = $user->insta;
+                $sendData["images_count"] = $this->mDb->getUserImagesCount($user->id, $isSelf);
                 echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
                 $success = true;
             }
+
         }
 
         return $success;
@@ -130,7 +195,7 @@ class UserMgmgt {
                 if (isset($body->password)) {
                     $user->password = Auth::crypt($user->user_id, $body->password);
                 }
-                
+
                 if (isset($body->insta)) {
                     $user->insta = $body->insta;
                 }

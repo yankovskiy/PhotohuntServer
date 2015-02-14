@@ -28,6 +28,8 @@ class Image{
     public $vote_count;
     public $is_editable;
     public $is_voted;
+    public $contest_status;
+    public $contest_subject;
     
     /**
      * Конструктор

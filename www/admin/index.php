@@ -93,7 +93,7 @@ class Admin {
         $user_option_selected = 1; // System user id
         $user_option_values = array();
         $user_option_output = array();
-        foreach ($this->mDb->getUsers() as $user) {
+        foreach ($this->mDb->adminGetUsers() as $user) {
             $user_option_values[] = $user->id;
             $user_option_output[] = $user->display_name;
         }
@@ -151,7 +151,7 @@ class Admin {
         $user_option_selected = $image["user_id"];
         $user_option_values = array();
         $user_option_output = array();
-        foreach ($this->mDb->getUsers() as $user) {
+        foreach ($this->mDb->adminGetUsers() as $user) {
             $user_option_values[] = $user->id;
             $user_option_output[] = $user->display_name;
         }
@@ -191,17 +191,19 @@ class Admin {
             $contestInfo = new Contest();
             $contestInfo->id = $id;
             $contestInfo->subject = $_POST["subject"];
+            $contestInfo->open_date = $_POST["open_date"];
             $contestInfo->close_date = $_POST["close_date"];
             $contestInfo->user_id = $_POST["user_id"];
             $contestInfo->status = $_POST["status"];
             $contestInfo->rewards = $_POST["rewards"];
-            $this->mDb->updateContest($contestInfo);
+            $contestInfo->prev_id = $_POST["prev_id"];
+            $this->mDb->adminUpdateContest($contestInfo);
         }
         $contest = $this->objectsToArray($this->mDb->getContest($id));
         $user_option_selected = $contest["user_id"];
         $user_option_values = array();
         $user_option_output = array();
-        foreach ($this->mDb->getUsers() as $user) {
+        foreach ($this->mDb->adminGetUsers() as $user) {
             $user_option_values[] = $user->id;
             $user_option_output[] = $user->display_name;
         }
@@ -225,17 +227,19 @@ class Admin {
         if (isset($_POST["submit"])) {
             $contestInfo = new Contest();
             $contestInfo->subject = $_POST["subject"];
+            $contestInfo->open_date = $_POST["open_date"];
             $contestInfo->close_date = $_POST["close_date"];
             $contestInfo->user_id = $_POST["user_id"];
             $contestInfo->status = $_POST["status"];
             $contestInfo->rewards = $_POST["rewards"];
+            $contestInfo->prev_id = $_POST["prev_id"];
             $this->mDb->adminAddContest($contestInfo);
             $this->printAllContest();
         } else {
             $user_option_selected = 1; // System user id
             $user_option_values = array();
             $user_option_output = array();
-            foreach ($this->mDb->getUsers() as $user) {
+            foreach ($this->mDb->adminGetUsers() as $user) {
                 $user_option_values[] = $user->id;
                 $user_option_output[] = $user->display_name;
             }
@@ -245,8 +249,10 @@ class Admin {
             $status_option_output = array("Закрыт", "Прием работ", "Голосование");
 
             $close_date = date('Y-m-d', strtotime("+3 days"));
+            $open_date = date('Y-m-d');
 
             $smarty = new Smarty();
+            $smarty->assign("open_date", $open_date);
             $smarty->assign("close_date", $close_date);
             $smarty->assign("user_option_selected", $user_option_selected);
             $smarty->assign("user_option_values", $user_option_values);
@@ -351,7 +357,7 @@ class Admin {
 
     private function printAllUsers() {
         $smarty = new Smarty();
-        $users = $this->objectsToArray($this->mDb->getUsers());
+        $users = $this->objectsToArray($this->mDb->adminGetUsers());
         $count = count($users);
         $smarty->assign("users", $users);
         $smarty->assign("count", $count);

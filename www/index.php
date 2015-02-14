@@ -36,6 +36,7 @@ $app->notFound(function () use ($app) {
     $app->put('/reset', 'generateHash');                   // генерация ссылки для сброса пароля
     $app->get('/reset/:cryptUser/:hash', 'sendPassword');  // сброс пароля
     $app->get('/user', 'getRating');                       // рейтинг пользователей (top 10)
+    $app->get('/user/:id/images', 'getUserImages');        // получение списка всех картинок пользователя
 
     /* contest management */
     $app->get('/contests', 'getContests');            // список всех конкурсов
@@ -47,6 +48,23 @@ $app->notFound(function () use ($app) {
     $app->put('/image/:id', 'updateImage');           // изменение информации о своем изображении
 
     $app->run();
+
+    function getUserImages($id) {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+
+        try {
+            $user->connectToDb();
+            try {
+                $user->getUserImages($id);
+            } catch (UserException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
 
     function deleteImage($id) {
         $contest = new ContestMgmt();

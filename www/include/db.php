@@ -29,6 +29,79 @@ class Database {
     private $mConnection;
 
     /**
+     * Получает количество побед пользователя (количество созданных их тем)
+     * @param int $id id пользователя
+     * @return int количество побед у пользователя
+     */
+    public function getUserWins($id) {
+        $sql = "SELECT count(id) as count FROM `contests` WHERE user_id = :id";
+        $count = 0;
+
+        $stmt = $this->mConnection->prepare($sql);
+        $params = array("id" => $id);
+
+        if ($stmt->execute($params)) {
+            if ($row = $stmt->fetch()) {
+                $count = $row["count"];
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Получает позицию пользователя в общем рейтинге
+     * @param int $id id пользователя
+     * @return int позиция в общем рейтинге
+     */
+    public function getUserRank($id) {
+        $sql = "SELECT z.rank FROM (\n"
+                . " SELECT t.id, @rownum := @rownum + 1 AS rank\n"
+                . " FROM users t, (SELECT @rownum := 0) r \n"
+                . " ORDER BY balance desc, id desc\n"
+                . ") as z WHERE id=:id";
+
+        $rank = 0;
+
+        $stmt = $this->mConnection->prepare($sql);
+        $params = array("id" => $id);
+
+        if ($stmt->execute($params)) {
+            if ($row = $stmt->fetch()) {
+                $rank = $row["rank"];
+            }
+        }
+
+        return $rank;
+    }
+
+    /**
+     * Получает список картинок пользователя отсортированных по дате публикации
+     * @param int $id id пользователя
+     * @return array массив объектов Image
+     */
+    public function getUserImages($id) {
+        $data = array();
+
+        $sql = "select id, contest_id, subject, vote_count, contest_status, contest_subject from view_images where user_id = :id order by id desc";
+        $stmt = $this->mConnection->prepare($sql);
+        if ($stmt->execute(array("id" => $id))) {
+            while($row = $stmt->fetch()) {
+                $image = new Image();
+                $image->id = $row["id"];
+                $image->contest_id = $row["contest_id"];
+                $image->subject = $row["subject"];
+                $image->vote_count = $row["vote_count"];
+                $image->contest_status = $row["contest_status"];
+                $image->contest_subject = $row["contest_subject"];
+                $data[] = $image;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
      * Увеличивает баланс пользователя на одно очко
      * @param int $userId id пользователя
      */
@@ -110,19 +183,23 @@ class Database {
      */
     public function createNewContest() {
         $result = false;
-        $sql = "SELECT i.id,i.subject,i.user_id,c.rewards FROM `images` i inner join contests c on (i.contest_id = c.id ) where c.status = 0 and to_days(now()) - to_days(c.close_date) = 1 order by i.vote_count desc limit 1";
+        $sql = "SELECT i.id,i.subject, i.contest_id, i.user_id,c.rewards, c.prev_id FROM `images` i inner join contests c on (i.contest_id = c.id ) where c.status = 0 and to_days(now()) - to_days(c.close_date) = 1 order by i.vote_count desc limit 1";
         $stmt = $this->mConnection->query($sql);
          
         if ($stmt != false) {
             if ($row = $stmt->fetch()) {
                 try {
                     $this->mConnection->beginTransaction();
-                    $query = "insert into contests (subject, close_date, user_id) values (:subject, :close_date, :user_id)";
+                    $query = "insert into contests (subject, open_date, close_date, user_id, prev_id) values (:subject, :open_date, :close_date, :user_id, :prev_id)";
+                    $prev_id = $row["contest_id"];
                     $user_id = $row["user_id"];
                     $subject = $row["subject"];
                     $rewards = $row["rewards"];
+                    $open_date = date('Y-m-d');
                     $close_date = date('Y-m-d', strtotime("+3 days"));
-                    $params = array("user_id" => $user_id, "subject" => $subject, "close_date" => $close_date);
+                    $params = array("user_id" => $user_id, "subject" => $subject, "open_date" => $open_date, "close_date" => $close_date,
+                            "prev_id" => $prev_id
+                    );
                     $stmt2 = $this->mConnection->prepare($query);
                     if($stmt2->execute($params)) {
                         $query = "update users set balance = balance + :rewards, `money` = `money` + :rewards where id = :user_id";
@@ -145,10 +222,10 @@ class Database {
      * @param Contest $contestInfo объект содержащий информацию по добавляемому конкурсу
      */
     public function adminAddContest($contestInfo) {
-        $query = "insert into contests (subject, close_date, user_id, rewards, status) values (:subject, :close_date, :user_id, :rewards, :status)";
-        $params = array("subject" => $contestInfo->subject, "close_date" => $contestInfo->close_date,
+        $query = "insert into contests (subject, open_date, close_date, user_id, rewards, status, prev_id) values (:subject, :open_date, :close_date, :user_id, :rewards, :status, :prev_id)";
+        $params = array("subject" => $contestInfo->subject, "open_date" => $contestInfo->open_date, "close_date" => $contestInfo->close_date,
                 "user_id" => $contestInfo->user_id, "rewards" => $contestInfo->rewards,
-                "status" => $contestInfo->status);
+                "status" => $contestInfo->status, "prev_id" => $contestInfo->prev_id);
         $stmt = $this->mConnection->prepare($query);
         $stmt->execute($params);
     }
@@ -206,7 +283,7 @@ class Database {
      * @return NULL в случае пустого рейтинга, либо массив объектов класса User
      */
     public function getRating() {
-        $stmt = $this->mConnection->query("select id, display_name, balance from users where balance > 0 order by balance ".
+        $stmt = $this->mConnection->query("select id, display_name, balance from users where balance > 0 and id != 1 order by balance ".
                 "desc, id desc limit 10");
 
         $ret = array();
@@ -244,6 +321,31 @@ class Database {
         }
 
         return $user;
+    }
+    /**
+     * Получает количество загруженных картинок у пользователя. 
+     * Для чужого пользователя учитываются только картинки в закрытых конкурсах
+     * @param int $id id пользователя
+     * @param boolean $isSelf true если необходимо посчитать количество своих картинок
+     * @return int количество картинок у пользователя
+     */
+    public function getUserImagesCount($id, $isSelf) {
+        $sql = "select count(id) as count from view_images where user_id = :id";
+        if (!$isSelf) {
+            $sql .= " and contest_status = " . Contest::STATUS_CLOSE;
+        }
+        $params = array("id" => $id);
+        $count = 0;
+
+        $stmt = $this->mConnection->prepare($sql);
+        if($stmt->execute($params)) {
+            if ($row = $stmt->fetch()) {
+                $count = $row["count"];
+
+            }
+        }
+
+        return $count;
     }
 
     /**
@@ -493,17 +595,20 @@ class Database {
      * @param Contest $contestInfo новая информация о конкурсе
      * @return boolean true в случае успешного обновления конкурса
      */
-    public function updateContest($contestInfo) {
+    public function adminUpdateContest($contestInfo) {
         $success = false;
 
         $currentContest = $this->getContest($contestInfo->id);
 
         if (isset($currentContest)) {
-            $query = "update contests set subject = :subject, rewards = :rewards, close_date = :close_date, " .
-                    "status = :status, user_id = :user_id where id = :id";
+            $query = "update contests set subject = :subject, rewards = :rewards, open_date = :open_date, close_date = :close_date, " .
+                    "status = :status, user_id = :user_id, prev_id = :prev_id where id = :id";
             $param = array("subject" => $contestInfo->subject, "rewards" => $contestInfo->rewards,
+                    "open_date" => $contestInfo->open_date,
                     "close_date" => $contestInfo->close_date, "status" => $contestInfo->status,
-                    "user_id" => $contestInfo->user_id, "id" => $contestInfo->id);
+                    "user_id" => $contestInfo->user_id, "id" => $contestInfo->id,
+                    "prev_id" => $contestInfo->prev_id
+            );
             $stmt = $this->mConnection->prepare($query);
             $success = $stmt->execute($param);
         }
@@ -515,7 +620,7 @@ class Database {
      * Получает список пользователей
      * @return массив объектов пользователей
      */
-    public function getUsers() {
+    public function adminGetUsers() {
         $ret = array();
         $query = "select * from users";
         $stmt = $this->mConnection->query($query);

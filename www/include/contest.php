@@ -29,11 +29,13 @@ class Contest {
     public $id;
     public $subject;
     public $rewards;
+    public $open_date;
     public $close_date;
     public $status;
     public $user_id;
     public $display_name;
     public $works;
+    public $prev_id;
 
     /**
      * Конструктор
@@ -45,11 +47,13 @@ class Contest {
             $this->id = $row["id"];
             $this->subject = $row["subject"];
             $this->rewards = $row["rewards"];
+            $this->open_date = $row["open_date"];
             $this->close_date = $row["close_date"];
             $this->status = $row["status"];
             $this->user_id = $row["user_id"];
             $this->display_name = $row["display_name"];
             $this->works = $row["works"];
+            $this->prev_id = $row["prev_id"];
         }
     }
 
