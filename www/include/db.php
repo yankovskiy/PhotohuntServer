@@ -16,11 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-require_once('user.php');
-require_once('item.php');
-require_once('config.php');
-require_once('contest.php');
-require_once('image.php');
+require_once 'goods.php';
+require_once 'user.php';
+require_once 'item.php';
+require_once 'config.php';
+require_once 'contest.php';
+require_once 'image.php';
 
 /**
  * Класс для работы с базой данных
@@ -302,6 +303,71 @@ class Database {
 
         return $ret;
     }
+    
+    /**
+     * Получает список товаров в магазине
+     * @return NULL если записей нет, либо массив объектов Goods
+     */
+    public function getShopItems() {
+        $sql = "select * from goods";
+        $stmt = $this->mConnection->query($sql);
+        
+        $ret = array();
+        
+        foreach ($stmt as $row) {
+            $ret[] = new Goods($row);
+        }
+        
+        if (count($ret) == 0) {
+            $ret = null;
+        }
+        
+        return $ret;
+    }
+    
+    /**
+     * Получает описание товара из магазина
+     * @param int $itemId id товара из магазина
+     * @return NULL если записей нет, объект типа Goods в противном случае
+     */
+    public function getShopItem($itemId) {
+        $sql = "select * from goods where id = :item_id";
+        $params = array("item_id" => $itemId);
+        $stmt = $this->mConnection->prepare($sql);
+        
+        $good = null;
+        if ($stmt->execute($params)) {
+            if ($row = $stmt->fetch()) {
+                $good = new Goods($row);
+            }
+        }
+        
+        return $good;
+    }
+    
+    /**
+     * Получает список купленных вещей пользователя
+     * @param int $userId id пользователя
+     * @return NULL если записей нет, либо массив объектов Item
+     */
+    public function getUserItems($userId) {
+        $ret = array();
+        $sql = "SELECT `id`, `name`, `description`, `count`, `auto_use` from view_items where `user_id` = :user_id";
+        $stmt = $this->mConnection->prepare($sql);
+        $params = array("user_id" => $userId);
+        
+        if ($stmt->execute($params)) {
+            while($row = $stmt->fetch()) {
+                $ret[] = new Item($row); 
+            }
+        }
+        
+        if (count($ret) == 0) {
+            $ret = null;
+        }
+        
+        return $ret;
+    }
 
     /**
      * Получает информацию о пользователе по user_id
@@ -363,6 +429,59 @@ class Database {
         $stmt->bindParam(":password", $userInfo->password);
 
         return $stmt->execute();
+    }
+    
+    /**
+     * Осуществляет покупку предмета в магазине
+     * @param User $user - пользователь осуществляющий покупку
+     * @param Goods $goods - покупаемый товар
+     */
+    public function userBuyItem($user, $goods) {
+        try {
+            $this->mConnection->beginTransaction();
+            $sql = "update users set money = money - :money, dc = dc - :dc where id = :id";
+            $params = array(
+                    "money" => $goods->price_money,
+                    "dc" => $goods->price_dc,
+                    "id" => $user->id
+            );
+            $stmt = $this->mConnection->prepare($sql);
+            $stmt->execute($params);
+            
+            $sql = "select id, count(id) as count from items where user_id = :user_id and goods_id = :goods_id";
+            $params = array(
+                    "user_id" => $user->id,
+                    "goods_id" => $goods->id
+            );
+            $stmt = $this->mConnection->prepare($sql);
+            $stmt->execute($params);
+            $count = 0;
+            $id = 0;
+            
+            if ($row = $stmt->fetch()) {
+                $count = $row["count"];
+                $id = $row["id"];
+            }
+            
+            if ($count > 0) {
+                $sql = "update items set count = count + 1 where id = :id";
+                $stmt = $this->mConnection->prepare($sql);
+                $params = array("id" => $id);
+                $stmt->execute($params);
+            } else {
+                $sql = "insert into items (user_id, goods_id, count) values (:user_id, :goods_id, 1)";
+                $stmt = $this->mConnection->prepare($sql);
+                $params = array(
+                        "user_id" => $user->id,
+                        "goods_id" => $goods->id
+                );
+                $stmt->execute($params);
+            }
+            
+            $this->mConnection->commit();
+        } catch (PDOException $e) {
+            $this->mConnection->rollBack();
+        }
     }
 
     /**
@@ -447,7 +566,7 @@ class Database {
      * @return boolean true в случае успешного изменения данныхs
      */
     public function useUserItems($userId, $itemName) {
-        $query = "update items set count = count - 1 where user_id = :user_id and good_id = (select id from goods where service_name = :service_name)";
+        $query = "update view_items set count = count - 1 where user_id = :user_id and service_name = :service_name";
         $stmt = $this->mConnection->prepare($query);
         $params = array("user_id" => $userId, "service_name" => $itemName);
         return $stmt->execute($params);

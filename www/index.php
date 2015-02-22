@@ -21,6 +21,7 @@ require_once 'include/usermgmt.php';
 require_once 'include/contestmgmt.php';
 require_once 'include/common.php';
 require_once 'include/exceptions.php';
+require_once 'include/shopmgmt.php';
 
 $app = new \Slim\Slim();
 $app->contentType('text/html; charset=utf-8');
@@ -46,8 +47,66 @@ $app->notFound(function () use ($app) {
     $app->put('/contest/:id', 'voteForContest');      // голосование за изображение
     $app->delete('/image/:id', 'deleteImage');        // удаление своего изображения
     $app->put('/image/:id', 'updateImage');           // изменение информации о своем изображении
+    
+    /* shop management */
+    $app->get('/shop', 'getShop');                    // список всех продоваемых товаров
+    $app->get('/shop/my', 'getMyItems');              // список предметов пользователя
+    $app->post('/shop/:id', 'buyItem');               // покупка предмета
+    $app->put('/shop/my/:id', 'useItem');             // использование предмета
 
     $app->run();
+    
+    function getShop() {
+        $shop = new ShopMgmt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $shop->connectToDb();
+            try {
+                $shop->getShop();
+            } catch (ShopException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function getMyItems() {
+        $shop = new ShopMgmt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $shop->connectToDb();
+            try {
+                $shop->getMyItems();
+            } catch (ShopException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function buyItem($id) {
+        $shop = new ShopMgmt();
+        $app = \Slim\Slim::getInstance();
+        try {
+            $shop->connectToDb();
+            try {
+                $shop->buyItem($id);
+            } catch (ShopException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function useItem($id) {
+        
+    }
 
     function getUserImages($id) {
         $user = new UserMgmgt();

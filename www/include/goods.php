@@ -1,4 +1,4 @@
-<?php 
+<?php
 /**
  * Copyright (C) 2014-2015  Artem Yankovskiy(artemyankovskiy@gmail.com)
  *
@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-class Item {
-    const EXTRA_PHOTO = "extra_photo";
-    
+class Goods {
     public $id;
+    public $service_name;
     public $name;
     public $description;
-    public $count;
+    public $price_money;
+    public $price_dc;
     public $auto_use;
     
     /**
@@ -33,9 +33,11 @@ class Item {
     function __construct($row = NULL) {
         if (isset($row)) {
             $this->id = $row["id"];
+            $this->service_name = $row["service_name"];
             $this->name = $row["name"];
             $this->description = $row["description"];
-            $this->count = $row["count"];
+            $this->price_money = $row["price_money"];
+            $this->price_dc = $row["price_dc"];
             $this->auto_use = $row["auto_use"];
         }
     }
