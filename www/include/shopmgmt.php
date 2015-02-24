@@ -39,11 +39,15 @@ class ShopMgmt {
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
             $items = $this->mDb->getShopItems();
-            if (isset($items)) {
-                echo json_encode($items, JSON_UNESCAPED_UNICODE);
-            } else {
+            if (!isset($items)) {
                 throw new ShopException("Проблема в работе магазина");
             }
+            
+            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            $userItems = $this->mDb->getUserItems($user->id);
+            
+            $data = array("shop_items" => $items, "my_items" => $userItems);
+            echo json_encode($data, JSON_UNESCAPED_UNICODE);
         }
     }
     
