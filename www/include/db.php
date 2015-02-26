@@ -30,6 +30,28 @@ class Database {
     private $mConnection;
 
     /**
+     * Проверяет наличие купленного товара у пользователя
+     * @param int $userId id пользователя у которого осуществить проверку
+     * @param string $serviceName service_name товара
+     * @return boolean true если товар есть у пользователя
+     */
+    public function isGoodsExists($userId, $serviceName) {
+        $sql = "select count(id) as records from `view_items` where user_id = :user_id and service_name = :service_name and count > 0";
+        $params = array("user_id" => $userId, "service_name" => $serviceName);
+        
+        $stmt = $this->mConnection->prepare($sql);
+        
+        $count = 0;
+        if ($stmt->execute($params)) {
+            if ($row = $stmt->fetch()) {
+                $count = $row["records"];
+            }
+        }
+        
+        return $count > 0;
+    }
+    
+    /**
      * Получает количество побед пользователя (количество созданных их тем)
      * @param int $id id пользователя
      * @return int количество побед у пользователя
@@ -352,7 +374,7 @@ class Database {
      */
     public function getUserItems($userId) {
         $ret = array();
-        $sql = "SELECT `id`, `name`, `description`, `count`, `auto_use` from view_items where `user_id` = :user_id";
+        $sql = "SELECT `id`,`service_name`, `name`, `description`, `count`, `auto_use` from view_items where `user_id` = :user_id";
         $stmt = $this->mConnection->prepare($sql);
         $params = array("user_id" => $userId);
         

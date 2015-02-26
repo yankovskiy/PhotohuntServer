@@ -21,7 +21,7 @@ require_once 'exceptions.php';
 
 class ShopMgmt {
     private $mDb;
-    
+
     /**
      * Выполняет подключение к базе данных
      * Генерирует исключение PDOException в случае ошибки подключения
@@ -30,7 +30,7 @@ class ShopMgmt {
         $this->mDb = new Database();
         $this->mDb->connect();
     }
-    
+
     /**
      * Получает список предметов в магазине
      * @throws ShopException
@@ -42,15 +42,42 @@ class ShopMgmt {
             if (!isset($items)) {
                 throw new ShopException("Проблема в работе магазина");
             }
-            
+
             $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
             $userItems = $this->mDb->getUserItems($user->id);
-            
-            $data = array("shop_items" => $items, "my_items" => $userItems);
+            $money = $user->money;
+            $dc = $user->dc;
+
+            if (isset($userItems)) {
+                // если аватар уже куплен
+                $isAvatarFound = false;
+                foreach ($userItems as $userItem) {
+                    if ($userItem->service_name == Item::AVATAR) {
+                        $isAvatarFound = true;
+                        break;
+                    }
+                }
+
+                // убрать его из магазина
+                $shopItems = array();
+                if ($isAvatarFound) {
+                    foreach ($items as $item) {
+                        if ($item->service_name != Item::AVATAR) {
+                            $shopItems[] = $item;
+                        }
+                    }
+                } else {
+                    $shopItems = $items;
+                }
+            } else {
+                $shopItems = $items;
+            }
+
+            $data = array("money" => $money, "dc" => $dc, "shop_items" => $shopItems, "my_items" => $userItems);
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
         }
     }
-    
+
     /**
      * Получает список покупок пользователя
      */
@@ -58,14 +85,14 @@ class ShopMgmt {
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
             $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
-            
+
             $items = $this->mDb->getUserItems($user->id);
             if (isset($items)) {
                 echo json_encode($items, JSON_UNESCAPED_UNICODE);
             }
         }
     }
-    
+
     /**
      * Производит покупку предмета в магазине
      * @param int $itemId id предмета в магазине
@@ -85,7 +112,22 @@ class ShopMgmt {
                 throw new ShopException("У вас недостаточно средств");
             }
             
+            if ($goods->service_name == Item::AVATAR) {
+                if ($this->isAvatarExists($user)) {
+                    throw new ShopException("\"Аватар\" нельзя купить дважды");
+                }
+            }
+
             $this->mDb->userBuyItem($user, $goods);
         }
+    }
+    
+    /**
+     * Проверяет, куплен ли "аватар" у пользователя или нет
+     * @param User $user пользователя для которого осуществить проверку купленного товара
+     * @return boolean true если "аватар" уже куплен
+     */
+    private function isAvatarExists($user) {
+        return $this->mDb->isGoodsExists($user->id, Item::AVATAR);
     }
 }

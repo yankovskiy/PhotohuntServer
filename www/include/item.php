@@ -18,9 +18,14 @@
 
 class Item {
     const EXTRA_PHOTO = "extra_photo";
+    const AVATAR = "avatar";
+    const EXTRA_CONTEST = "extra_contest";
+    const PREMIUM7 = "premium7";
+    const PREMIUM30 = "premium30";
     
     public $id;
     public $name;
+    public $service_name;
     public $description;
     public $count;
     public $auto_use;
@@ -34,6 +39,7 @@ class Item {
         if (isset($row)) {
             $this->id = $row["id"];
             $this->name = $row["name"];
+            $this->service_name = $row["service_name"];
             $this->description = $row["description"];
             $this->count = $row["count"];
             $this->auto_use = $row["auto_use"];
