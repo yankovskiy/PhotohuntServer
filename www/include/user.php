@@ -30,6 +30,7 @@ class User {
     public $money;
     public $dc;
     public $insta;
+    public $avatar;
 
     /**
      * Конструктор
@@ -48,6 +49,7 @@ class User {
             $this->money = $row["money"];
             $this->dc = $row["dc"];
             $this->insta = $row["insta"];
+            $this->avatar = $row["avatar"];
         }
     }
 

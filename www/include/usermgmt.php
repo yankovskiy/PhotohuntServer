@@ -18,7 +18,10 @@
 
 require_once 'db.php';
 require_once 'auth.php';
+require_once 'exceptions.php';
 require_once 'contest.php';
+require_once 'simpleimage.php';
+
 
 /**
  * Класс для управления пользователями
@@ -35,6 +38,58 @@ class UserMgmgt {
         $this->mDb->connect();
     }
 
+    /**
+     * Добавляет аватар пользователя
+     */
+    public function addAvatar() {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            if ($this->isUserHaveAvatarPermissions($user->id)) {
+                
+                $fileName = Config::UPLOAD_AVATAR_PATH . $user->avatar . ".jpg";
+                if(file_exists($fileName)) {
+                    unlink($fileName);
+                }
+                
+                $uniq = uniqid("ava_" . $user->id);
+                $fileName = Config::UPLOAD_AVATAR_PATH . $uniq . ".jpg";
+                
+                if (!SimpleImage::handleUploadedFile($_FILES["image"], $fileName, 512, true)) {
+                    throw new UserException("Ошибка при загрузке аватара");
+                }
+                
+                $this->mDb->updateUserAvatar($user->id, $uniq);
+            } else {
+                throw new UserException("У вас нет прав на выполнение этой операции");
+            }
+        }
+    }
+    
+    /**
+     * Удаляет аватар пользователя
+     */
+    public function deleteAvatar() {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            if ($this->isUserHaveAvatarPermissions($user->id)) {
+                $fileName = Config::UPLOAD_AVATAR_PATH . $user->avatar . ".jpg";
+                try {
+                    if(file_exists($fileName)) {
+                        unlink($fileName);
+                    }
+                    
+                    $this->mDb->updateUserAvatar($user->id, null);
+                } catch (ErrorException $e) {
+                    throw new UserException("Ошибка при удалении аватара");
+                }
+            } else {
+                throw new UserException("У вас нет прав на выполнение этой операции");
+            }
+        }
+    }
+    
     /**
      * Получает рейтинг (top10) пользователей
      * @return boolean true в случае успешного получения рейтинга
@@ -108,15 +163,19 @@ class UserMgmgt {
 
             if (is_numeric($userId)) {
                 $user = $this->mDb->getUserById($userId);
-                $isValid = true;
-                $isSelf = $user->user_id == $auth->getAuthenticatedUserId();
+                if (isset($user)) {
+                    $isValid = true;
+                    $isSelf = $user->user_id == $auth->getAuthenticatedUserId();
+                }
             } else {
                 $user = $this->mDb->getUserByUserId($userId);
-                $isValid = $userId ==  $auth->getAuthenticatedUserId();
-                $isSelf = $isValid;
+                if (isset($user)) {
+                    $isValid = $userId ==  $auth->getAuthenticatedUserId();
+                    $isSelf = $isValid;
+                }
             }
 
-            if (isset($user) && $isValid) {
+            if ($isValid) {
                 $sendData = array();
                 if ($user->id != 1) {
                     $sendData["rank"] = $this->mDb->getUserRank($user->id);
@@ -129,9 +188,21 @@ class UserMgmgt {
                 }
                 
                 $sendData["id"] = $user->id;
+                $isUserHaveAvatar = $this->isUserHaveAvatar($user);
+                $isUserHaveAvatarPermissions = $this->isUserHaveAvatarPermissions($user->id);
+                
                 if ($isSelf) {
+                    $sendData["avatar_permission"] = $isUserHaveAvatarPermissions;
                     $sendData["user_id"] = $user->user_id;
+                    $sendData["money"] = $user->money;
+                    $sendData["dc"] = $user->dc;
                 }
+                
+                $sendData["avatar_present"] = ($isUserHaveAvatar && $isUserHaveAvatarPermissions);
+                if ($sendData["avatar_present"]) {
+                    $sendData["avatar"] = $user->avatar;
+                }
+                
                 $sendData["display_name"] = $user->display_name;
                 $sendData["insta"] = $user->insta;
                 $sendData["images_count"] = $this->mDb->getUserImagesCount($user->id, $isSelf);
@@ -142,6 +213,25 @@ class UserMgmgt {
         }
 
         return $success;
+    }
+    
+    /**
+     * Проверяет наличие файла аватара у пользователя
+     * @param User $user объект содержащий информацию о пользователе
+     * @return boolean true если у пользователя есть загруженный аватар
+     */
+    private function isUserHaveAvatar($user) {
+        $fileName = Config::UPLOAD_AVATAR_PATH . $user->avatar . ".jpg";
+        return file_exists($fileName);
+    }
+    
+    /**
+     * Проверяет наличие прав у пользователя на управление аватарами
+     * @param int $userId id пользователя
+     * @return boolean true если у пользователя есть права на управление аватарами
+     */
+    private function isUserHaveAvatarPermissions($userId) {
+        return $this->mDb->isGoodsExists($userId, Item::AVATAR);
     }
 
     /**

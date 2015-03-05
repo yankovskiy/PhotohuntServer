@@ -298,54 +298,7 @@ class ContestMgmt {
      * @return boolean true в случае успешной обработки изображения
      */
     private function handleUploadedFile($file, $uploadfile) {
-        $success = false;
-        $whitelist = array(".jpg",".jpeg");
-        try {
-
-            if ($file["size"] > 1512000 || $file["size"] < 4096) {
-                throw new Exception("Некорректный размер изображения");
-            }
-
-            $i = 0;
-            foreach ($whitelist as $item) {
-                if(preg_match("/$item/i", $file["name"])) {
-                    $i++;
-                }
-            }
-            if($i!=1) {
-                throw new Exception("Неразрешенное расширение файла");
-            }
-
-            if ($file["type"] != "image/jpeg") {
-                throw new Exception("Неразрешенный формат файла");
-            }
-
-            $image = new SimpleImage();
-            $image->load($file["tmp_name"]);
-            $width = $image->getWidth();
-            $height = $image->getHeight();
-
-            if ($width > $height) {
-                if ($width > 1024) {
-                    $width = 1024;
-                }
-
-                $image->resizeToWidth($width);
-            } else {
-                if ($height > 1024) {
-                    $height = 1024;
-                }
-
-                $image->resizeToHeight($height);
-            }
-
-            $image->save($uploadfile, IMAGETYPE_JPEG, 60);
-
-            $success = true;
-        } catch (Exception $e) {
-
-        }
-        return $success;
+        return SimpleImage::handleUploadedFile($file, $uploadfile, 1024);
     }
 
     /**

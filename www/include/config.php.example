@@ -24,4 +24,5 @@ class Config {
     
     /* Путь для загрузки изображений */
     const UPLOAD_PATH = "/var/www/api.tim-sw.com/images/";
+    const UPLOAD_AVATAR_PATH = "/var/www/api.tim-sw.com/avatars/";
 }

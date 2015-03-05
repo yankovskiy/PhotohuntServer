@@ -30,6 +30,18 @@ class Database {
     private $mConnection;
 
     /**
+     * Обновляет запись об аватаре пользователя
+     * @param int $userId id пользователя
+     * @param string $avatar имя файла аватара (без разрешения), либо null если аватар нужно удалить
+     */
+    public function updateUserAvatar($userId, $avatar) {
+        $sql = "update users set avatar = :avatar where id = :id";
+        $params = array("avatar" => $avatar, "id" => $userId);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+    }
+    
+    /**
      * Проверяет наличие купленного товара у пользователя
      * @param int $userId id пользователя у которого осуществить проверку
      * @param string $serviceName service_name товара

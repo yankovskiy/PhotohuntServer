@@ -38,6 +38,8 @@ $app->notFound(function () use ($app) {
     $app->get('/reset/:cryptUser/:hash', 'sendPassword');  // сброс пароля
     $app->get('/user', 'getRating');                       // рейтинг пользователей (top 10)
     $app->get('/user/:id/images', 'getUserImages');        // получение списка всех картинок пользователя
+    $app->post('/avatar', 'addAvatar');                    // добавление аватара пользователем
+    $app->delete('/avatar', 'deleteAvatar');               // удаление аватара пользователя
 
     /* contest management */
     $app->get('/contests', 'getContests');            // список всех конкурсов
@@ -55,6 +57,41 @@ $app->notFound(function () use ($app) {
     $app->put('/shop/my/:id', 'useItem');             // использование предмета
 
     $app->run();
+    
+    function addAvatar() {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+
+        try {
+            $user->connectToDb();
+            try {
+                $user->addAvatar();
+            } catch (UserException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function deleteAvatar() {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $user->connectToDb();
+            try {
+                $user->deleteAvatar();
+            } catch (UserException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    } 
+    
     
     function getShop() {
         $shop = new ShopMgmt();
