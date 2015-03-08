@@ -39,6 +39,33 @@ class UserMgmgt {
     }
 
     /**
+     * Получает статистику по балансу пользователя по его id
+     * @param int $id id пользователя
+     * @throws UserException в случае, если пользователь не найден
+     */
+    public function getUserStats($id) {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $user = $this->mDb->getUserById($id);
+            if (!isset($user)) {
+                throw new UserException("Несуществующий пользователь");
+            }
+
+            $self = ($user->user_id == $auth->getAuthenticatedUserId());
+
+            $works = $this->mDb->getUserImagesCount($id, $self);
+            $winsRewards = $this->mDb->getUserWinsRewards($id);
+
+            $totalBalance = $user->balance;
+            $otherRewards = $totalBalance - $works - $winsRewards;
+
+            $sendData = array("total" => $totalBalance, "works" => $works,
+                    "wins_rewards" => $winsRewards, "other" => $otherRewards);
+            echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
      * Добавляет аватар пользователя
      */
     public function addAvatar() {
@@ -46,26 +73,26 @@ class UserMgmgt {
         if ($auth->authenticate($this->mDb)) {
             $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
             if ($this->isUserHaveAvatarPermissions($user->id)) {
-                
+
                 $fileName = Config::UPLOAD_AVATAR_PATH . $user->avatar . ".jpg";
                 if(file_exists($fileName)) {
                     unlink($fileName);
                 }
-                
+
                 $uniq = uniqid("ava_" . $user->id);
                 $fileName = Config::UPLOAD_AVATAR_PATH . $uniq . ".jpg";
-                
+
                 if (!SimpleImage::handleUploadedFile($_FILES["image"], $fileName, 512, true)) {
                     throw new UserException("Ошибка при загрузке аватара");
                 }
-                
+
                 $this->mDb->updateUserAvatar($user->id, $uniq);
             } else {
                 throw new UserException("У вас нет прав на выполнение этой операции");
             }
         }
     }
-    
+
     /**
      * Удаляет аватар пользователя
      */
@@ -79,7 +106,7 @@ class UserMgmgt {
                     if(file_exists($fileName)) {
                         unlink($fileName);
                     }
-                    
+
                     $this->mDb->updateUserAvatar($user->id, null);
                 } catch (ErrorException $e) {
                     throw new UserException("Ошибка при удалении аватара");
@@ -89,7 +116,7 @@ class UserMgmgt {
             }
         }
     }
-    
+
     /**
      * Получает рейтинг (top10) пользователей
      * @return boolean true в случае успешного получения рейтинга
@@ -186,23 +213,23 @@ class UserMgmgt {
                     $sendData["wins_count"] = 0;
                     $sendData["balance"] = 0;
                 }
-                
+
                 $sendData["id"] = $user->id;
                 $isUserHaveAvatar = $this->isUserHaveAvatar($user);
                 $isUserHaveAvatarPermissions = $this->isUserHaveAvatarPermissions($user->id);
-                
+
                 if ($isSelf) {
                     $sendData["avatar_permission"] = $isUserHaveAvatarPermissions;
                     $sendData["user_id"] = $user->user_id;
                     $sendData["money"] = $user->money;
                     $sendData["dc"] = $user->dc;
                 }
-                
+
                 $sendData["avatar_present"] = ($isUserHaveAvatar && $isUserHaveAvatarPermissions);
                 if ($sendData["avatar_present"]) {
                     $sendData["avatar"] = $user->avatar;
                 }
-                
+
                 $sendData["display_name"] = $user->display_name;
                 $sendData["insta"] = $user->insta;
                 $sendData["images_count"] = $this->mDb->getUserImagesCount($user->id, $isSelf);
@@ -214,7 +241,7 @@ class UserMgmgt {
 
         return $success;
     }
-    
+
     /**
      * Проверяет наличие файла аватара у пользователя
      * @param User $user объект содержащий информацию о пользователе
@@ -224,7 +251,7 @@ class UserMgmgt {
         $fileName = Config::UPLOAD_AVATAR_PATH . $user->avatar . ".jpg";
         return file_exists($fileName);
     }
-    
+
     /**
      * Проверяет наличие прав у пользователя на управление аватарами
      * @param int $userId id пользователя

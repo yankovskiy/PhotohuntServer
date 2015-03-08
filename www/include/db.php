@@ -30,6 +30,26 @@ class Database {
     private $mConnection;
 
     /**
+     * Возращает количество очков рейтинга полученные за победы в конкурсах
+     * @param int $id id пользователя
+     * @return int количество очков рейтинга полученные за победы в конкурсах
+     */
+    public function getUserWinsRewards($id) {
+        $reward = 0;
+        
+        $sql = "select (count(id) * rewards) as reward from contests where user_id = :user_id";
+        $params = array("user_id" => $id);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+        if ($row = $stmt->fetch()) {
+            $reward = $row["reward"];
+        }
+        
+        return $reward;
+    }
+    
+    
+    /**
      * Обновляет запись об аватаре пользователя
      * @param int $userId id пользователя
      * @param string $avatar имя файла аватара (без разрешения), либо null если аватар нужно удалить
@@ -69,7 +89,7 @@ class Database {
      * @return int количество побед у пользователя
      */
     public function getUserWins($id) {
-        $sql = "SELECT count(id) as count FROM `contests` WHERE user_id = :id";
+        $sql = "SELECT count(id) as count FROM `contests` WHERE winner_id = :id";
         $count = 0;
 
         $stmt = $this->mConnection->prepare($sql);

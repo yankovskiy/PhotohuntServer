@@ -40,6 +40,7 @@ $app->notFound(function () use ($app) {
     $app->get('/user/:id/images', 'getUserImages');        // получение списка всех картинок пользователя
     $app->post('/avatar', 'addAvatar');                    // добавление аватара пользователем
     $app->delete('/avatar', 'deleteAvatar');               // удаление аватара пользователя
+    $app->get('/user/:id/stats', 'getUserStats');          // получение статистики по пользователю
 
     /* contest management */
     $app->get('/contests', 'getContests');            // список всех конкурсов
@@ -57,6 +58,23 @@ $app->notFound(function () use ($app) {
     $app->put('/shop/my/:id', 'useItem');             // использование предмета
 
     $app->run();
+    
+    function getUserStats($id) {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $user->connectToDb();
+            try {
+                $user->getUserStats($id);
+            } catch (UserException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
     
     function addAvatar() {
         $user = new UserMgmgt();
