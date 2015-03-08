@@ -225,6 +225,13 @@ class Database {
             if ($row = $stmt->fetch()) {
                 try {
                     $this->mConnection->beginTransaction();
+                    $sql = "update contests set winner_id = :winner_id where id = :id";
+                    $winner_id = $row["user_id"];
+                    $id = $row["contest_id"];
+                    $params = array("winner_id" => $winner_id, "id" => $id);
+                    $stmt1 = $this->mConnection->prepare($sql);
+                    $stmt1->execute($params);
+                    
                     $query = "insert into contests (subject, open_date, close_date, user_id, prev_id) values (:subject, :open_date, :close_date, :user_id, :prev_id)";
                     $prev_id = $row["contest_id"];
                     $user_id = $row["user_id"];
