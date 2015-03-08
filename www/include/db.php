@@ -42,7 +42,11 @@ class Database {
         $stmt = $this->mConnection->prepare($sql);
         $stmt->execute($params);
         if ($row = $stmt->fetch()) {
-            $reward = $row["reward"];
+            if(isset($row["reward"])){
+                $reward = $row["reward"] ;
+            } else {
+                $reward = 0;
+            }
         }
         
         return $reward;
