@@ -37,6 +37,20 @@ class UserMgmgt {
         $this->mDb = new Database();
         $this->mDb->connect();
     }
+    
+    /**
+     * Получение списка конкурсов в которых победил заданный пользователь
+     * @param int $id id пользователя
+     */
+    public function getWinsList($id) {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $contests = $this->mDb->getWinsList($id);
+            if (isset($contests)) {
+                echo json_encode($contests, JSON_UNESCAPED_UNICODE);
+            }
+        }
+    }
 
     /**
      * Получает статистику по балансу пользователя по его id

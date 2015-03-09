@@ -893,6 +893,30 @@ class Database {
 
         return $ret;
     }
+    
+    /**
+     * Получает список конкурсов в которых победил пользователь
+     * @param int $id id пользователя
+     * @return array массив объектов класса Contest, либо null если конкурсов не найдено
+     */
+    public function getWinsList($id) {
+        $sql = "select * from view_contests where winner_id = :id order by id desc";
+        $stmt = $this->mConnection->prepare($sql);
+        $params = array("id" => $id);
+        $stmt->execute($params);
+        
+        $ret = array();
+        while($row = $stmt->fetch()) {
+            $contest = new Contest($row);
+            $ret[] = $contest;
+        }
+        
+        if (count($ret) == 0) {
+            $ret = null;
+        }
+        
+        return $ret;
+    }
 
     /**
      * Получить информацию о конкурсе
