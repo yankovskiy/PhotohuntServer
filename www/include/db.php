@@ -22,6 +22,7 @@ require_once 'item.php';
 require_once 'config.php';
 require_once 'contest.php';
 require_once 'image.php';
+require_once 'common.php';
 
 /**
  * Класс для работы с базой данных
@@ -368,18 +369,38 @@ class Database {
 
         return $ret;
     }
+
+    /**
+     * Логгирование действий с магазином
+     * @param int $id id пользователя
+     * @param datetime $date дата 
+     * @param string $message сообщение для логгирования
+     */
+    public function logShopAction($id, $date, $message) {
+        $sql = "insert into shop_logs (`user_id`, `date`, `from`, `action`) values (:user_id, :date, :from, :action)";
+        $params = array(
+                "user_id" => $id,
+                "date" => $date,
+                "from" => Common::getClientIp(),
+                "action" => $message
+        );
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+    }
     
     /**
      * Получает список товаров в магазине
      * @return NULL если записей нет, либо массив объектов Goods
      */
     public function getShopItems() {
-        $sql = "select * from goods";
-        $stmt = $this->mConnection->query($sql);
+        $sql = "select * from goods where disabled != 1 and min_version <= :version";
+        $stmt = $this->mConnection->prepare($sql);
+        $params = array("version" => Common::getClientVersion());
+        $stmt->execute($params);
         
         $ret = array();
         
-        foreach ($stmt as $row) {
+        while ($row = $stmt->fetch()) {
             $ret[] = new Goods($row);
         }
         

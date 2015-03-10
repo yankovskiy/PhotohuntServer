@@ -251,6 +251,12 @@ class ContestMgmt {
                                 // изменить количество платных публикаций
                                 if ($isUserCanAddImage["is_shop"]) {
                                     $this->mDb->useUserItems($user->id, Item::EXTRA_PHOTO);
+                                    
+                                    $date =  date("Y-m-d H:i:s");
+                                    $message = sprintf("Использование покупки %s", ITEM::EXTRA_PHOTO);
+                                    
+                                    $this->mDb->logShopAction($user->id, $date, $message);
+                                    
                                 }
                             } else {
                                 $this->mDb->removeImageFromContest($contestId, $recordId);

@@ -119,6 +119,11 @@ class ShopMgmt {
             }
 
             $this->mDb->userBuyItem($user, $goods);
+            
+            $date =  date("Y-m-d H:i:s"); 
+            $message = sprintf("Покупка %s за %d фотокойнов", $goods->service_name, $goods->price_money);
+
+            $this->mDb->logShopAction($user->id, $date, $message);
         }
     }
     
