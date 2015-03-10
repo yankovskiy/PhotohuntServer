@@ -118,7 +118,7 @@ class Database {
         $sql = "SELECT z.rank FROM (\n"
                 . " SELECT t.id, @rownum := @rownum + 1 AS rank\n"
                 . " FROM users t, (SELECT @rownum := 0) r \n"
-                . " ORDER BY balance desc, id desc\n"
+                . " ORDER BY balance desc, id asc\n"
                 . ") as z WHERE id=:id";
 
         $rank = 0;
@@ -351,7 +351,7 @@ class Database {
      */
     public function getRating() {
         $stmt = $this->mConnection->query("select id, display_name, balance from users where balance > 0 and id != 1 order by balance ".
-                "desc, id desc limit 10");
+                "desc, id asc limit 10");
 
         $ret = array();
 
