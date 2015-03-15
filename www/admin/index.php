@@ -81,7 +81,7 @@ class Admin {
     }
 
     private function viewContest($id) {
-        $images = $this->objectsToArray($this->mDb->getImagesForContest($id, true));
+        $images = $this->objectsToArray($this->mDb->getImagesForContest($id, true, true));
         $imageList = array();
         foreach ($images as $image) {
             $val = array();
@@ -144,10 +144,11 @@ class Admin {
             $imageInfo->subject = $_POST["subject"];
             $imageInfo->user_id = $_POST["user_id"];
             $imageInfo->vote_count = $_POST["vote_count"];
-            $this->mDb->updateImage($imageInfo);
+            $imageInfo->must_win = $_POST["must_win"];
+            $this->mDb->adminUpdateImage($imageInfo);
         }
 
-        $image = $this->objectsToArray($this->mDb->getImageById($id));
+        $image = $this->objectsToArray($this->mDb->getImageById($id, true));
         $user_option_selected = $image["user_id"];
         $user_option_values = array();
         $user_option_output = array();
@@ -155,12 +156,19 @@ class Admin {
             $user_option_values[] = $user->id;
             $user_option_output[] = $user->display_name;
         }
+        
+        $must_win_option_selected = $image["must_win"];
+        $must_win_option_values = array(0, 1);
+        $must_win_option_output = array("Не задано", "Да");
 
         $smarty = new Smarty();
         $smarty->assign("image", $image);
         $smarty->assign("user_option_selected", $user_option_selected);
         $smarty->assign("user_option_values", $user_option_values);
         $smarty->assign("user_option_output", $user_option_output);
+        $smarty->assign("must_win_option_selected", $must_win_option_selected);
+        $smarty->assign("must_win_option_values", $must_win_option_values);
+        $smarty->assign("must_win_option_output", $must_win_option_output);
         $smarty->display("edit_image.tpl");
     }
 

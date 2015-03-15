@@ -30,13 +30,15 @@ class Image{
     public $is_voted;
     public $contest_status;
     public $contest_subject;
+    public $must_win;
     
     /**
      * Конструктор
      * @param array $row содержит массив для заполнения полей объекта, либо NULL, в случае, если
+     * @param boolean $isAdmin - true если к объекту будет обращение из админки (включение дополнительных полей в объект)
      * поля заполнять не нужно
      */
-    function __construct($row = NULL) {
+    function __construct($row = NULL, $isAdmin = false) {
         if (isset($row)) {
             $this->id = $row["id"];
             $this->contest_id = $row["contest_id"];
@@ -44,6 +46,10 @@ class Image{
             $this->subject = $row["subject"];
             $this->display_name = $row["display_name"];
             $this->vote_count = $row["vote_count"];
+            
+            if ($isAdmin) {
+                $this->must_win = $row["must_win"];
+            }
         }
     }
 }

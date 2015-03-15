@@ -243,28 +243,53 @@ class Database {
      */
     public function createNewContest() {
         $result = false;
-        $sql = "SELECT i.id,i.subject, i.contest_id, i.user_id,c.rewards, c.prev_id FROM `images` i inner join contests c on (i.contest_id = c.id ) where c.status = 0 and to_days(now()) - to_days(c.close_date) = 1 order by i.vote_count desc limit 1";
+        $sql = "SELECT i.id,i.subject, i.contest_id, i.user_id,c.rewards, c.prev_id,i.vote_count FROM `images` i inner join contests c on (i.contest_id = c.id ) where c.status = 0 and to_days(now()) - to_days(c.close_date) = 1 order by i.vote_count desc limit 1";
         $stmt = $this->mConnection->query($sql);
          
         if ($stmt != false) {
             if ($row = $stmt->fetch()) {
                 try {
-                    $this->mConnection->beginTransaction();
-                    $sql = "update contests set winner_id = :winner_id where id = :id";
-                    $winner_id = $row["user_id"];
+                    $sql = "SELECT i.id,i.subject, i.contest_id, i.user_id,c.rewards, c.prev_id FROM `images` i inner join contests c on (i.contest_id = c.id ) where c.status = 0 and to_days(now()) - to_days(c.close_date) = 1 and i.must_win = 1";
+                    $mustWin = false;
+                    
+                    if ($row1 = $this->mConnection->query($sql)->fetch()) {
+                        $mustWin = ($row["id"] != $row1["id"]);
+                    }
+                    
+                    if ($mustWin) {
+                        $winner_id = $row1["user_id"];
+                        $user_id = $row1["user_id"];
+                        $subject = $row1["subject"];
+                        $image_id = $row1["id"];
+                        $vote_count = $row["vote_count"]; // количество голосов у работы-победителя
+                    } else {
+                        $winner_id = $row["user_id"];
+                        $user_id = $row["user_id"];
+                        $subject = $row["subject"];
+                    }
+                    
                     $id = $row["contest_id"];
+                    $prev_id = $row["contest_id"];
+                    $rewards = $row["rewards"];
+                    
+                    $this->mConnection->beginTransaction();
+                    
+                    if ($mustWin) {
+                        $sql = "update images set vote_count = :vote_count + 1 where id = :id";
+                        $params = array("vote_count" => $vote_count, "id" => $image_id);
+                        $this->mConnection->prepare($sql)->execute($params);
+                    }
+                    
+                    $sql = "update contests set winner_id = :winner_id where id = :id";
                     $params = array("winner_id" => $winner_id, "id" => $id);
                     $stmt1 = $this->mConnection->prepare($sql);
                     $stmt1->execute($params);
                     
                     $query = "insert into contests (subject, open_date, close_date, user_id, prev_id) values (:subject, :open_date, :close_date, :user_id, :prev_id)";
-                    $prev_id = $row["contest_id"];
-                    $user_id = $row["user_id"];
-                    $subject = $row["subject"];
-                    $rewards = $row["rewards"];
                     $open_date = date('Y-m-d');
                     $close_date = date('Y-m-d', strtotime("+3 days"));
-                    $params = array("user_id" => $user_id, "subject" => $subject, "open_date" => $open_date, "close_date" => $close_date,
+                    $params = array("user_id" => $user_id, "subject" => $subject, 
+                            "open_date" => $open_date, "close_date" => $close_date,
                             "prev_id" => $prev_id
                     );
                     $stmt2 = $this->mConnection->prepare($query);
@@ -327,10 +352,11 @@ class Database {
 
     /**
      * @param int $id id записи с изображением
+     * @param boolean $isAdmin true если доступ к функции осуществляется из админки
      * @return Image объект содержащий информацию об изображении, либо NULL если изображение не
      * найдено
      */
-    public function getImageById($id) {
+    public function getImageById($id, $isAdmin = true) {
         $stmt = $this->mConnection->prepare("select * from view_images where id = :id");
 
         $image = null;
@@ -338,7 +364,7 @@ class Database {
 
         if($stmt->execute($params)) {
             if($row = $stmt->fetch()) {
-                $image = new Image($row);
+                $image = new Image($row, $isAdmin);
             }
         }
 
@@ -685,10 +711,10 @@ class Database {
      * Меняет инфрмацию о изображении
      * @param Image $imageInfo объект содержащий информацию о изображении
      */
-    public function updateImage($imageInfo) {
-        $query = "update images set subject = :subject, user_id = :user_id, vote_count = :vote_count where id = :id";
+    public function adminUpdateImage($imageInfo) {
+        $query = "update images set subject = :subject, user_id = :user_id, vote_count = :vote_count, must_win = :must_win where id = :id";
         $params = array("subject" => $imageInfo->subject, "user_id" => $imageInfo->user_id,
-                "vote_count" => $imageInfo->vote_count, "id" => $imageInfo->id);
+                "vote_count" => $imageInfo->vote_count, "id" => $imageInfo->id, "must_win" => $imageInfo->must_win);
         $stmt = $this->mConnection->prepare($query);
         $stmt->execute($params);
     }
@@ -1003,9 +1029,10 @@ class Database {
      * @param id $contestId id конкурса для которого необходимо получить массив картинок
      * @param boolean $isClosed true если конкурс закрыт, при этом картинки будут отсортированны
      * по рейтингу
+     * @param boolean $isAdmin true если обращение происходит из админки и нужно получить дополнительные поля
      * @return array массив объектов Image, либо null в случае отсутствия
      */
-    public function getImagesForContest($contestId, $isClosed) {
+    public function getImagesForContest($contestId, $isClosed, $isAdmin = false) {
         $images = array();
         if ($isClosed) {
             $query = "select * from view_images where contest_id = :contest_id order by vote_count desc, id asc";
@@ -1016,7 +1043,7 @@ class Database {
 
         if ($stmt->execute(array("contest_id" => $contestId))) {
             while($row = $stmt->fetch()) {
-                $image = new Image($row);
+                $image = new Image($row, $isAdmin);
                 $images[] = $image;
             }
         }
