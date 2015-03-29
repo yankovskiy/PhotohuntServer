@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 class Common {
-    
+
     /**
      * Получает версию клиента
      * @return integer версия клиента (номер сборки)
@@ -29,15 +29,25 @@ class Common {
                 $version = $headers["Content-Version"];
             }
         }
-        
+
         return $version;
     }
-    
+
     /**
      * Получает IP-адрес клиента
      * @return string IP-адрес клиента
      */
     public static function getClientIp() {
         return $_SERVER["REMOTE_ADDR"];
+    }
+
+    /**
+     * Вывод на экран сообщения подготовленного к логированию
+     * @param string $message основное сообщение
+     * @param string $detail расширенное сообщение
+     */
+    public static function log($message, $detail) {
+        $date = date("Y-m-d H:i:s");
+        printf("%s\t%s\t%s\n", $date, $message, $detail);
     }
 }

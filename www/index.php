@@ -22,6 +22,7 @@ require_once 'include/contestmgmt.php';
 require_once 'include/common.php';
 require_once 'include/exceptions.php';
 require_once 'include/shopmgmt.php';
+require_once 'include/messagemgmt.php';
 
 $app = new \Slim\Slim();
 $app->contentType('text/html; charset=utf-8');
@@ -51,19 +52,134 @@ $app->notFound(function () use ($app) {
     $app->put('/contest/:id', 'voteForContest');      // голосование за изображение
     $app->delete('/image/:id', 'deleteImage');        // удаление своего изображения
     $app->put('/image/:id', 'updateImage');           // изменение информации о своем изображении
-    
+
     /* shop management */
     $app->get('/shop', 'getShop');                    // список всех продоваемых товаров
     $app->get('/shop/my', 'getMyItems');              // список предметов пользователя
     $app->post('/shop/:id', 'buyItem');               // покупка предмета
     $app->put('/shop/my/:id', 'useItem');             // использование предмета
 
+    /* message management */
+    $app->get('/messages', 'getMyMessages');          // получение списка своих сообщений
+    $app->put('/messages/:id', 'readMessage');        // прочитать сообщение
+    $app->delete('/messages/:id', 'removeMessage');   // удалить сообщение
+    $app->post('/messages', 'sendMessage');           // отправить сообщение
+    
+    /* favorites user management */
+    $app->get('/favorites/users', 'getFavoritesUsers');        // Получить список любимых авторов
+    $app->put('/favorites/users/:id', 'updateFavoriteUser');   // Добавить / убрать любимого автора
+
     $app->run();
     
-    function getWinsList($id) {
+    function getFavoritesUsers() {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+
+        try {
+            $user->connectToDb();
+            try {
+                $user->getFavoritesUsers();
+            } catch (UserException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function updateFavoriteUser($id) {
         $user = new UserMgmgt();
         $app = \Slim\Slim::getInstance();
         
+        try {
+            $user->connectToDb();
+            try {
+                $user->updateFavoriteUser($id);
+            } catch (UserException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    
+    function sendMessage() {
+        $msg = new MessageMgmt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $msg->connectToDb();
+            try {
+                $msg->sendMessage($app->request()->getBody());
+            } catch (MessageException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function getMyMessages() {
+        $msg = new MessageMgmt();
+        $app = \Slim\Slim::getInstance();
+
+        try {
+            $msg->connectToDb();
+            try {
+                $msg->getMyMessages();
+            } catch (MessageException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function readMessage($id) {
+        $msg = new MessageMgmt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $msg->connectToDb();
+            try {
+                $msg->readMessage($id);
+            } catch (MessageException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function removeMessage($id) {
+        $msg = new MessageMgmt();
+        $app = \Slim\Slim::getInstance();
+    
+        try {
+            $msg->connectToDb();
+            try {
+                $msg->removeMessage($id);
+            } catch (MessageException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+
+    function getWinsList($id) {
+        $user = new UserMgmgt();
+        $app = \Slim\Slim::getInstance();
+
         try {
             $user->connectToDb();
             try {
@@ -76,11 +192,11 @@ $app->notFound(function () use ($app) {
             $app->halt(500);
         }
     }
-    
+
     function getUserStats($id) {
         $user = new UserMgmgt();
         $app = \Slim\Slim::getInstance();
-        
+
         try {
             $user->connectToDb();
             try {
@@ -93,7 +209,7 @@ $app->notFound(function () use ($app) {
             $app->halt(500);
         }
     }
-    
+
     function addAvatar() {
         $user = new UserMgmgt();
         $app = \Slim\Slim::getInstance();
@@ -110,11 +226,11 @@ $app->notFound(function () use ($app) {
             $app->halt(500);
         }
     }
-    
+
     function deleteAvatar() {
         $user = new UserMgmgt();
         $app = \Slim\Slim::getInstance();
-        
+
         try {
             $user->connectToDb();
             try {
@@ -126,9 +242,9 @@ $app->notFound(function () use ($app) {
         } catch (PDOException $e) {
             $app->halt(500);
         }
-    } 
-    
-    
+    }
+
+
     function getShop() {
         $shop = new ShopMgmt();
         $app = \Slim\Slim::getInstance();
@@ -144,7 +260,7 @@ $app->notFound(function () use ($app) {
             $app->halt(500);
         }
     }
-    
+
     function getMyItems() {
         $shop = new ShopMgmt();
         $app = \Slim\Slim::getInstance();
@@ -160,7 +276,7 @@ $app->notFound(function () use ($app) {
             $app->halt(500);
         }
     }
-    
+
     function buyItem($id) {
         $shop = new ShopMgmt();
         $app = \Slim\Slim::getInstance();
@@ -176,9 +292,9 @@ $app->notFound(function () use ($app) {
             $app->halt(500);
         }
     }
-    
+
     function useItem($id) {
-        
+
     }
 
     function getUserImages($id) {

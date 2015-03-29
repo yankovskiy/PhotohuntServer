@@ -31,6 +31,8 @@ class User {
     public $dc;
     public $insta;
     public $avatar;
+    public $regid;
+    public $client_version;
 
     /**
      * Конструктор
@@ -50,6 +52,8 @@ class User {
             $this->dc = $row["dc"];
             $this->insta = $row["insta"];
             $this->avatar = $row["avatar"];
+            $this->regid = $row["regid"];
+            $this->client_version = $row["client_version"];
         }
     }
 

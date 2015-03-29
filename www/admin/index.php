@@ -10,7 +10,7 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.  
+ * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
@@ -25,6 +25,7 @@ abstract class Types {
     const CONTEST = "contest";
     const IMAGE = "image";
     const USER = "user";
+    const MESSAGES = "message";
 }
 
 abstract class Action {
@@ -97,7 +98,7 @@ class Admin {
             $user_option_values[] = $user->id;
             $user_option_output[] = $user->display_name;
         }
-        
+
         $smarty = new Smarty();
         $smarty->assign("user_option_selected", $user_option_selected);
         $smarty->assign("user_option_values", $user_option_values);
@@ -115,25 +116,25 @@ class Admin {
                 $this->editImage($id, $contestId);
             } else if ($action == Action::DELETE) {
                 $this->removeImage($id, $contestId);
-            } 
+            }
         }
         else if ($action == Action::ADD) {
             $this->addImage($contestId);
         }
     }
-    
+
     private function addImage($contestId) {
         if (isset($_POST["submit"])) {
             $image = new Image();
             $image->user_id = $_POST["user_id"];
             $image->subject = $_POST["subject"];
             $image->contest_id = $contestId;
-            
+
             $contestMgmt = new ContestMgmt();
             $contestMgmt->setDbConnection($this->mDb);
             $contestMgmt->adminAddImage($image);
         }
-        
+
         $this->viewContest($contestId);
     }
 
@@ -157,6 +158,10 @@ class Admin {
             $user_option_output[] = $user->display_name;
         }
         
+        $must_win_option_selected = $image["must_win"];
+        $must_win_option_values = array(0, 1);
+        $must_win_option_output = array("Не задано", "Да");
+
         $must_win_option_selected = $image["must_win"];
         $must_win_option_values = array(0, 1);
         $must_win_option_output = array("Не задано", "Да");
@@ -300,6 +305,116 @@ class Admin {
         }
     }
 
+    private function handleMessages($action) {
+        $id = $this->getId();
+        if ($id != null) {
+            if ($action == Action::EDIT) {
+                $this->editMessage($id);
+            } else if ($action = Action::DELETE) {
+                $this->removeMessage($id);
+            }
+        } else {
+            if ($action == Action::ADD) {
+                $this->createMessage();
+            } else if ($action == Action::VIEW) {
+                $this->printAllMessages();
+            }
+        }
+    }
+
+    private function editMessage($id) {
+        if (isset($_POST["submit"])) {
+            $message = new Message();
+            $message->id = $id;
+            $message->date = $_POST["date"];
+            $message->from_user_id = $_POST["from_user_id"];
+            $message->to_user_id = $_POST["to_user_id"];
+            $message->message = $_POST["message"];
+            $message->status = Message::UNSENT;
+            $message->title = $_POST["title"];
+            $this->mDb->adminUpdateMessage($message);
+        }
+
+        $message = $this->objectsToArray($this->mDb->adminGetMessages($id)[0]);
+        $from_users_selected = $message["from_user_id"]; 
+        $from_users_values = array();
+        $from_users_output = array();
+        foreach ($this->mDb->adminGetUsers() as $user) {
+            $from_users_values[] = $user->id;
+            $from_users_output[] = sprintf("%s (%s)", $user->display_name, $user->user_id);
+        }
+
+        $to_users_selected = $message["to_user_id"];
+        $to_users_values = $from_users_values;
+        $to_users_output = $from_users_output;
+
+        $smarty = new Smarty();
+        $smarty->assign("from_users_selected", $from_users_selected);
+        $smarty->assign("from_users_values", $from_users_values);
+        $smarty->assign("from_users_output", $from_users_output);
+
+        $smarty->assign("to_users_selected", $to_users_selected);
+        $smarty->assign("to_users_values", $to_users_values);
+        $smarty->assign("to_users_output", $to_users_output);
+
+        $smarty->assign("message", $message);
+        $smarty->display("edit_message.tpl");
+    }
+
+    private function removeMessage($id) {
+        $this->mDb->adminRemoveMessage($id);
+        $this->printAllMessages();
+    }
+
+    private function createMessage() {
+        if (isset($_POST["submit"])) {
+            $message = new Message();
+            $message->date = $_POST["date"];
+            $message->from_user_id = $_POST["from_user_id"];
+            $message->to_user_id = $_POST["to_user_id"];
+            $message->message = $_POST["message"];
+            $message->status = Message::UNSENT;
+            $message->title = $_POST["title"];
+
+            $this->mDb->adminAddMessage($message);
+            $this->printAllMessages();
+        } else {
+            $date = date("Y-m-d H:i:s");
+            $from_users_selected = 1; // System user id
+            $from_users_values = array();
+            $from_users_output = array();
+            foreach ($this->mDb->adminGetUsers() as $user) {
+                $from_users_values[] = $user->id;
+                $from_users_output[] = sprintf("%s (%s)", $user->display_name, $user->user_id);
+            }
+
+            $to_users_selected = 1;
+            $to_users_values = $from_users_values;
+            $to_users_output = $from_users_output;
+
+            $smarty = new Smarty();
+            $smarty->assign("from_users_selected", $from_users_selected);
+            $smarty->assign("from_users_values", $from_users_values);
+            $smarty->assign("from_users_output", $from_users_output);
+
+            $smarty->assign("to_users_selected", $to_users_selected);
+            $smarty->assign("to_users_values", $to_users_values);
+            $smarty->assign("to_users_output", $to_users_output);
+
+            $smarty->assign("date", $date);
+            $smarty->display("add_message.tpl");
+        }
+    }
+
+    private function printAllMessages() {
+        $smarty = new Smarty();
+        $messages = $this->objectsToArray($this->mDb->adminGetMessages());
+        $count = count($messages);
+        $smarty->assign("messages", $messages);
+        $smarty->assign("count", $count);
+        $smarty->display("view_messages.tpl");
+    }
+
     private function editUser($id) {
         if (isset($_POST["submit"])) {
             $user = new User();
@@ -387,6 +502,8 @@ class Admin {
                 $this->handleImage($this->getAction());
             } else if ($this->getType() == Types::USER) {
                 $this->handleUser($this->getAction());
+            } else if ($this->getType() == Types::MESSAGES) {
+                $this->handleMessages($this->getAction());
             } else {
                 $this->printAllContest();
             }

@@ -39,6 +39,49 @@ class UserMgmgt {
     }
     
     /**
+     * Получает список любимых пользователей
+     */
+    public function getFavoritesUsers() {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $user = $auth->getAuthenticatedUser();
+            $users = $this->mDb->getFavoritesUsers($user->id);
+            $sendData = array();
+            
+            foreach ($users as $user) {
+                $data = array();
+                $data["fid"] = $user->fid;
+                $data["display_name"] = $user->display_name;
+                if (isset($user->avatar) && strlen($user->avatar) > 0) {
+                    $data["avatar"] = $user->avatar;
+                }
+                
+                $sendData[] = $data;
+            }
+            
+            echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * Добавление / удаление избранного пользователя в / из списка
+     * @param int $id id избранного пользователя
+     */
+    public function updateFavoriteUser($id) {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $user = $auth->getAuthenticatedUser();
+            $isExists = $this->mDb->isFavoriteUserExists($user->id, $id);
+            if ($isExists) {
+                $this->mDb->removeFavoriteUser($user->id, $id);
+            } else {
+                $this->mDb->addFavoriteUser($user->id, $id);
+            }
+        }
+    }
+    
+    
+    /**
      * Получение списка конкурсов в которых победил заданный пользователь
      * @param int $id id пользователя
      */
@@ -237,6 +280,9 @@ class UserMgmgt {
                     $sendData["user_id"] = $user->user_id;
                     $sendData["money"] = $user->money;
                     $sendData["dc"] = $user->dc;
+                    $sendData["unread_messages"] = $this->mDb->getUnreadMessageCount($user->id);
+                } else {
+                    $sendData["is_bookmarked"] = $this->mDb->isFavoriteUserExists($auth->getAuthenticatedUser()->id, $user->id);
                 }
 
                 $sendData["avatar_present"] = ($isUserHaveAvatar && $isUserHaveAvatarPermissions);
@@ -319,6 +365,7 @@ class UserMgmgt {
                 $body = json_decode($body);
                 $user = new User();
                 $user->user_id = $userId;
+
                 if (isset($body->display_name)) {
                     $user->display_name = $body->display_name;
                 }
@@ -329,6 +376,14 @@ class UserMgmgt {
 
                 if (isset($body->insta)) {
                     $user->insta = $body->insta;
+                }
+
+                if (isset($body->regid)) {
+                    $user->regid = $body->regid;
+                }
+
+                if (isset($body->client_version) && $body->client_version > 0) {
+                    $user->client_version = $body->client_version;
                 }
 
                 $success = $this->mDb->updateUser($user);

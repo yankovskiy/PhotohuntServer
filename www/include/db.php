@@ -23,12 +23,307 @@ require_once 'config.php';
 require_once 'contest.php';
 require_once 'image.php';
 require_once 'common.php';
+require_once 'message.php';
 
 /**
  * Класс для работы с базой данных
-*/
+ */
 class Database {
     private $mConnection;
+
+    /**
+     * Получения списка избранных пользователей
+     * @param int $userId id текущего пользователя
+     * @return array список избранных пользователей
+     */
+    public function getFavoritesUsers($userId) {
+        $sql = "select * from view_favorites_users where uid = :uid";
+        $params = array("uid" => $userId);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+        $ret = array();
+        
+        while($row = $stmt->fetchObject()) {
+            $ret[] = $row;
+        }
+        
+        return $ret;
+    }
+    
+    /**
+     * Проверяет есть ли пользователь уже в избранных
+     * @param int $userId id пользователя для проверки
+     * @param int $favoriteId id пользователя (избранного)
+     */
+    public function isFavoriteUserExists($userId, $favoriteId) {
+        $sql = "select count(uid) as count from view_favorites_users where uid = :uid and fid = :fid";
+        $params = array("uid" => $userId, "fid" => $favoriteId);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+        
+        $count = 0;
+        if($row = $stmt->fetch()) {
+            $count = $row["count"];
+        }
+        
+        return $count > 0;
+    }
+    
+    /**
+     * Удаление пользователя из списка избранных
+     * @param int $userId id владельца списка
+     * @param int $favoriteId id пользователя для удаления
+     */
+    public function removeFavoriteUser($userId, $favoriteId) {
+        $sql = "delete from favorites_users where `user_id` = :uid and `favorite_user_id` = :fid";
+        $params = array("uid" => $userId, "fid" => $favoriteId);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+    }
+    
+    /**
+     * Добавление пользователя в список избранных
+     * @param int $userId id пользователя владельца списка
+     * @param int $favoriteId id пользователя для добавления
+     */
+    public function addFavoriteUser($userId, $favoriteId) {
+        $sql = "insert into favorites_users values (:uid, :fid)";
+        $params = array("uid" => $userId, "fid" => $favoriteId);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+    }
+    
+    /**
+     * Сохраняет сообщение в базу
+     * @param Message $message объект для сохранения в базу
+     * @return Message объект содержащий все записи о сохраненном сообщении
+     */
+    public function saveMessage($message) {
+        $sql = "insert into `messages` (`from_user_id`, `to_user_id`, `date`, `message`, `status`, `title`) " .
+                "values (:from_user_id, :to_user_id, :date, :message, :status, :title)";
+
+        $params = array(
+                "from_user_id" => $message->from_user_id,
+                "to_user_id" => $message->to_user_id,
+                "date" => $message->date,
+                "message" => $message->message,
+                "status" => Message::UNSENT,
+                "title" => $message->title
+        );
+
+        $this->mConnection->prepare($sql)->execute($params);
+        $messageId = $this->mConnection->lastInsertId();
+        return $this->getMessage($message->from_user_id, $messageId);
+    }
+
+    /**
+     * Получает список сообщений
+     * @param int $id (optional) если задан, то выбирается сообщение по его id
+     * @return array массив объектов Message
+     */
+    public function adminGetMessages($id = null) {
+        $sql = "select * from view_messages";
+        $params = null;
+
+        if (isset($id)) {
+            $sql .= " where id = :id";
+            $params = array("id" => $id);
+        }
+
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+        $messages = array();
+
+        while ($row = $stmt->fetchObject("Message")) {
+            $messages[] = $row;
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Возвращает количество непрочитанных сообщений для пользователя
+     * @param int $userId id пользователя
+     * @return int количество непрочитанных сообщений
+     */
+    public function getUnreadMessageCount($userId) {
+        $sql = "select count(id) as count from messages where `to_user_id` = :user_id and `status` != :status and `inbox` = 1";
+        $params = array("user_id" => $userId, "status" => Message::READ);
+
+        $stmt = $this->mConnection->prepare($sql);
+
+        $count = 0;
+
+        if($stmt->execute($params)) {
+            if ($row = $stmt->fetch()) {
+                $count = $row["count"];
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Получает список неотправленных сообщений
+     * @param boolean $sent (optional) true - если необходимо получить отправленные сообщения
+     * @param int $userId (optional) id пользователя для которого нужно получить список сообщений
+     * @param int $messageId (optional) id сообщения
+     * @return array массив объектов Message
+     */
+    public function getUnsentMessages() {
+        $sql = "select * from `view_messages` where `status` = :status";
+        $params = array("status" => Message::UNSENT);
+
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+
+        $messages = array();
+        while ($row = $stmt->fetchObject("Message")) {
+            $messages[] = $row;
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Получает список входящих сообщений пользователя
+     * @param int $userId id пользователя
+     * @return array массив объектов Message
+     */
+    public function getInboxMessages($userId) {
+        $sql = "select * from `view_messages` where `to_user_id` = :user_id and `inbox` = 1 order by `date` desc";
+        $params = array("user_id" => $userId);
+
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+
+        $messages = array();
+        while ($row = $stmt->fetchObject("Message")) {
+            $messages[] = $row;
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Получает список исходящих сообщений пользователя
+     * @param int $userId id пользователя
+     * @return array массив объектов Message
+     */
+    public function getOutboxMessages($userId) {
+        $sql = "select * from `view_messages` where `from_user_id` = :user_id and `outbox` = 1 order by `date` desc";
+        $params = array("user_id" => $userId);
+
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+
+        $messages = array();
+        while ($row = $stmt->fetchObject("Message")) {
+            $messages[] = $row;
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Получает сообщение пользователя
+     * @param int $userId id пользователя
+     * @param int $messageId id сообщения
+     * @return Message сообщение, либо false если сообщения не найдено
+     */
+    public function getMessage($userId, $messageId) {
+        $sql = "select * from `view_messages` where `id` = :id and ((`from_user_id` = :user_id and `outbox` = 1) or (`to_user_id` = :user_id and `inbox` = 1))";
+        $params = array("id" => $messageId, "user_id" => $userId);
+
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchObject("Message");
+    }
+
+    /**
+     * Отмечает сообщение в базе
+     * @param int $id id сообщения для отметки
+     * @param int $mark (Message::SENT, Message:UNSENT, Message::READ)
+     */
+    public function markMessage($id, $mark) {
+        $sql = "update `messages` set `status` = :status where `id` = :id";
+        $params = array("status" => $mark, "id" => $id);
+        $this->mConnection->prepare($sql)->execute($params);
+    }
+
+    /**
+     * Создает сообщение для отправки его пользователю
+     * @param Message $message
+     */
+    public function adminAddMessage($message) {
+        $sql = "insert into `messages` (`from_user_id`, `to_user_id`, `date`, `message`, `status`, `title`) " .
+                "values (:from_user_id, :to_user_id, :date, :message, :status, :title)";
+
+        $params = array(
+                "from_user_id" => $message->from_user_id,
+                "to_user_id" => $message->to_user_id,
+                "date" => $message->date,
+                "message" => $message->message,
+                "status" => $message->status,
+                "title" => $message->title
+        );
+
+        $this->mConnection->prepare($sql)->execute($params);
+    }
+
+    /**
+     * Редактирует сообщение для отправки его пользователю
+     * @param Message $message
+     */
+    public function adminUpdateMessage($message) {
+        $sql = "update `messages` set `from_user_id` = :from_user_id, `to_user_id` = :to_user_id, ".
+                "`date` = :date, `message` = :message, `status` = :status, `title` = :title where `id` = :id";
+
+        $params = array(
+                "id" => $message->id,
+                "from_user_id" => $message->from_user_id,
+                "to_user_id" => $message->to_user_id,
+                "date" => $message->date,
+                "message" => $message->message,
+                "status" => $message->status,
+                "title" => $message->title
+        );
+
+        $this->mConnection->prepare($sql)->execute($params);
+    }
+
+    /**
+     * Отмчает сообщение как удаленное из папки
+     * @param int $id id сообщения для удаления
+     * @param boolean $isInbox true если удалить из входящих
+     */
+    public function markMessageAsRemoved($id, $isInbox) {
+        $sql = "update `messages` set ";
+
+        if ($isInbox) {
+            $sql .= "`inbox` = 0 ";
+        } else {
+            $sql .= "`outbox` = 0 ";
+        }
+
+        $sql .= "where `id` = :id";
+        $params = array("id" => $id);
+
+        $this->mConnection->prepare($sql)->execute($params);
+    }
+
+    /**
+     * Удаляет сообщение по его id
+     * @param int $id id сообщения для удаления
+     */
+    public function adminRemoveMessage($id) {
+        $sql = "delete from `messages` where `id` = :id";
+        $params = array("id" => $id);
+
+        $this->mConnection->prepare($sql)->execute($params);
+    }
+
 
     /**
      * Возращает количество очков рейтинга полученные за победы в конкурсах
@@ -37,7 +332,7 @@ class Database {
      */
     public function getUserWinsRewards($id) {
         $reward = 0;
-        
+
         $sql = "select (count(id) * rewards) as reward from contests where winner_id = :user_id";
         $params = array("user_id" => $id);
         $stmt = $this->mConnection->prepare($sql);
@@ -49,11 +344,11 @@ class Database {
                 $reward = 0;
             }
         }
-        
+
         return $reward;
     }
-    
-    
+
+
     /**
      * Обновляет запись об аватаре пользователя
      * @param int $userId id пользователя
@@ -65,7 +360,7 @@ class Database {
         $stmt = $this->mConnection->prepare($sql);
         $stmt->execute($params);
     }
-    
+
     /**
      * Проверяет наличие купленного товара у пользователя
      * @param int $userId id пользователя у которого осуществить проверку
@@ -75,19 +370,19 @@ class Database {
     public function isGoodsExists($userId, $serviceName) {
         $sql = "select count(id) as records from `view_items` where user_id = :user_id and service_name = :service_name and count > 0";
         $params = array("user_id" => $userId, "service_name" => $serviceName);
-        
+
         $stmt = $this->mConnection->prepare($sql);
-        
+
         $count = 0;
         if ($stmt->execute($params)) {
             if ($row = $stmt->fetch()) {
                 $count = $row["records"];
             }
         }
-        
+
         return $count > 0;
     }
-    
+
     /**
      * Получает количество побед пользователя (количество созданных их тем)
      * @param int $id id пользователя
@@ -117,9 +412,9 @@ class Database {
     public function getUserRank($id) {
         $sql = "SELECT z.rank FROM (\n"
                 . " SELECT t.id, @rownum := @rownum + 1 AS rank\n"
-                . " FROM users t, (SELECT @rownum := 0) r \n"
-                . " ORDER BY balance desc, id asc\n"
-                . ") as z WHERE id=:id";
+                        . " FROM users t, (SELECT @rownum := 0) r \n"
+                                . " ORDER BY balance desc, id asc\n"
+                                        . ") as z WHERE id=:id";
 
         $rank = 0;
 
@@ -251,11 +546,11 @@ class Database {
                 try {
                     $sql = "SELECT i.id,i.subject, i.contest_id, i.user_id,c.rewards, c.prev_id FROM `images` i inner join contests c on (i.contest_id = c.id ) where c.status = 0 and to_days(now()) - to_days(c.close_date) = 1 and i.must_win = 1";
                     $mustWin = false;
-                    
+
                     if ($row1 = $this->mConnection->query($sql)->fetch()) {
                         $mustWin = ($row["id"] != $row1["id"]);
                     }
-                    
+
                     if ($mustWin) {
                         $winner_id = $row1["user_id"];
                         $user_id = $row1["user_id"];
@@ -267,28 +562,28 @@ class Database {
                         $user_id = $row["user_id"];
                         $subject = $row["subject"];
                     }
-                    
+
                     $id = $row["contest_id"];
                     $prev_id = $row["contest_id"];
                     $rewards = $row["rewards"];
-                    
+
                     $this->mConnection->beginTransaction();
-                    
+
                     if ($mustWin) {
                         $sql = "update images set vote_count = :vote_count + 1 where id = :id";
                         $params = array("vote_count" => $vote_count, "id" => $image_id);
                         $this->mConnection->prepare($sql)->execute($params);
                     }
-                    
+
                     $sql = "update contests set winner_id = :winner_id where id = :id";
                     $params = array("winner_id" => $winner_id, "id" => $id);
                     $stmt1 = $this->mConnection->prepare($sql);
                     $stmt1->execute($params);
-                    
+
                     $query = "insert into contests (subject, open_date, close_date, user_id, prev_id) values (:subject, :open_date, :close_date, :user_id, :prev_id)";
                     $open_date = date('Y-m-d');
                     $close_date = date('Y-m-d', strtotime("+3 days"));
-                    $params = array("user_id" => $user_id, "subject" => $subject, 
+                    $params = array("user_id" => $user_id, "subject" => $subject,
                             "open_date" => $open_date, "close_date" => $close_date,
                             "prev_id" => $prev_id
                     );
@@ -399,7 +694,7 @@ class Database {
     /**
      * Логгирование действий с магазином
      * @param int $id id пользователя
-     * @param datetime $date дата 
+     * @param datetime $date дата
      * @param string $message сообщение для логгирования
      */
     public function logShopAction($id, $date, $message) {
@@ -413,7 +708,7 @@ class Database {
         $stmt = $this->mConnection->prepare($sql);
         $stmt->execute($params);
     }
-    
+
     /**
      * Получает список товаров в магазине
      * @return NULL если записей нет, либо массив объектов Goods
@@ -423,20 +718,20 @@ class Database {
         $stmt = $this->mConnection->prepare($sql);
         $params = array("version" => Common::getClientVersion());
         $stmt->execute($params);
-        
+
         $ret = array();
-        
+
         while ($row = $stmt->fetch()) {
             $ret[] = new Goods($row);
         }
-        
+
         if (count($ret) == 0) {
             $ret = null;
         }
-        
+
         return $ret;
     }
-    
+
     /**
      * Получает описание товара из магазина
      * @param int $itemId id товара из магазина
@@ -446,17 +741,17 @@ class Database {
         $sql = "select * from goods where id = :item_id";
         $params = array("item_id" => $itemId);
         $stmt = $this->mConnection->prepare($sql);
-        
+
         $good = null;
         if ($stmt->execute($params)) {
             if ($row = $stmt->fetch()) {
                 $good = new Goods($row);
             }
         }
-        
+
         return $good;
     }
-    
+
     /**
      * Получает список купленных вещей пользователя
      * @param int $userId id пользователя
@@ -467,17 +762,17 @@ class Database {
         $sql = "SELECT `id`,`service_name`, `name`, `description`, `count`, `auto_use` from view_items where `user_id` = :user_id";
         $stmt = $this->mConnection->prepare($sql);
         $params = array("user_id" => $userId);
-        
+
         if ($stmt->execute($params)) {
             while($row = $stmt->fetch()) {
-                $ret[] = new Item($row); 
+                $ret[] = new Item($row);
             }
         }
-        
+
         if (count($ret) == 0) {
             $ret = null;
         }
-        
+
         return $ret;
     }
 
@@ -501,7 +796,7 @@ class Database {
         return $user;
     }
     /**
-     * Получает количество загруженных картинок у пользователя. 
+     * Получает количество загруженных картинок у пользователя.
      * Для чужого пользователя учитываются только картинки в закрытых конкурсах
      * @param int $id id пользователя
      * @param boolean $isSelf true если необходимо посчитать количество своих картинок
@@ -542,7 +837,7 @@ class Database {
 
         return $stmt->execute();
     }
-    
+
     /**
      * Осуществляет покупку предмета в магазине
      * @param User $user - пользователь осуществляющий покупку
@@ -559,7 +854,7 @@ class Database {
             );
             $stmt = $this->mConnection->prepare($sql);
             $stmt->execute($params);
-            
+
             $sql = "select id, count(id) as count from items where user_id = :user_id and goods_id = :goods_id";
             $params = array(
                     "user_id" => $user->id,
@@ -569,12 +864,12 @@ class Database {
             $stmt->execute($params);
             $count = 0;
             $id = 0;
-            
+
             if ($row = $stmt->fetch()) {
                 $count = $row["count"];
                 $id = $row["id"];
             }
-            
+
             if ($count > 0) {
                 $sql = "update items set count = count + 1 where id = :id";
                 $stmt = $this->mConnection->prepare($sql);
@@ -589,7 +884,7 @@ class Database {
                 );
                 $stmt->execute($params);
             }
-            
+
             $this->mConnection->commit();
         } catch (PDOException $e) {
             $this->mConnection->rollBack();
@@ -743,7 +1038,7 @@ class Database {
         $currentRecord = $this->getUserByUserId($userInfo->user_id);
         if (isset($currentRecord)) {
             $query = "update users set display_name = :display_name, password = :password, " .
-                    "hash = :hash, insta = :insta where user_id = :user_id";
+                    "hash = :hash, insta = :insta, `regid` = :regid, `client_version` = :client_version where user_id = :user_id";
             $stmt = $this->mConnection->prepare($query);
 
             $stmt->bindParam(":display_name", $display_name);
@@ -751,12 +1046,16 @@ class Database {
             $stmt->bindParam(":hash", $hash);
             $stmt->bindParam(":user_id", $user_id);
             $stmt->bindParam(":insta", $insta);
+            $stmt->bindParam(":regid", $regid);
+            $stmt->bindParam(":client_version", $client_version);
 
             $user_id = $userInfo->user_id;
             $display_name = (isset($userInfo->display_name)) ? $userInfo->display_name : $currentRecord->display_name;
             $password = (isset($userInfo->password)) ? $userInfo->password : $currentRecord->password;
             $hash = (isset($userInfo->hash)) ? $userInfo->hash : $currentRecord->hash;
             $insta = (isset($userInfo->insta)) ? $userInfo->insta : $currentRecord->insta;
+            $regid = (isset($userInfo->regid)) ? $userInfo->regid : $currentRecord->regid;
+            $client_version = (isset($userInfo->client_version)) ? $userInfo->client_version : $currentRecord->client_version;
 
             $success = $stmt->execute();
         }
@@ -940,7 +1239,7 @@ class Database {
 
         return $ret;
     }
-    
+
     /**
      * Получает список конкурсов в которых победил пользователь
      * @param int $id id пользователя
@@ -951,17 +1250,17 @@ class Database {
         $stmt = $this->mConnection->prepare($sql);
         $params = array("id" => $id);
         $stmt->execute($params);
-        
+
         $ret = array();
         while($row = $stmt->fetch()) {
             $contest = new Contest($row);
             $ret[] = $contest;
         }
-        
+
         if (count($ret) == 0) {
             $ret = null;
         }
-        
+
         return $ret;
     }
 

@@ -22,6 +22,7 @@
 class Auth {
     private $mUserId;
     private $mGroup;
+    private $mAuthUser;
     
     /**
      * Функция для проведения авторизации
@@ -36,6 +37,7 @@ class Auth {
 
             if (isset($userInfo)) {
                 if($this->isPasswordValid($userInfo, $pass)) {
+                    $this->mAuthUser = $userInfo;
                     return true;
                 }
             }
@@ -43,6 +45,14 @@ class Auth {
         header('WWW-Authenticate: Basic realm="Restricted area"');
         header('HTTP/1.0 401 Unauthorized');
         exit;
+    }
+    
+    /**
+     * Получить объект содержащий информацию об авторизовавшемся пользователе
+     * @return User авторизовавшийся пользователь
+     */
+    public function getAuthenticatedUser() {
+        return $this->mAuthUser;
     }
     
     /**

@@ -26,7 +26,7 @@
 <td><a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?id={$contests[contest].prev_id}&type=contest&action=view">{$contests[contest].prev_id}</a></td>
 <td>
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?id={$contests[contest].id}&type=contest&action=edit">Редактировать</a> |
-<a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?id={$contests[contest].id}&type=contest&action=delete">Удалить</a>
+<a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?id={$contests[contest].id}&type=contest&action=delete" onclick="return confirm('Удалить?');">Удалить</a>
 </td>
 </tr>
 {/section}
@@ -36,5 +36,7 @@
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=contest&action=add">Новый конкурс</a>
 <br>
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=user&action=view">Управление пользователями</a>
+<br>
+<a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=message&action=view">Управление сообщениями</a>
 
 {include file="footer.tpl"}

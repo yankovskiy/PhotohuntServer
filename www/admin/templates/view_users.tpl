@@ -22,7 +22,7 @@
 <td>{$users[user].insta}</td>
 <td>
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=user&action=edit&id={$users[user].id}">Редактировать</a> |
-<a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=user&action=delete&id={$users[user].id}">Удалить</a>
+<a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=user&action=delete&id={$users[user].id}" onclick="return confirm('Удалить?');">Удалить</a>
 </td>
 </tr>
 {/section}
