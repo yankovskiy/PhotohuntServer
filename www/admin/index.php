@@ -157,10 +157,6 @@ class Admin {
             $user_option_values[] = $user->id;
             $user_option_output[] = $user->display_name;
         }
-        
-        $must_win_option_selected = $image["must_win"];
-        $must_win_option_values = array(0, 1);
-        $must_win_option_output = array("Не задано", "Да");
 
         $must_win_option_selected = $image["must_win"];
         $must_win_option_values = array(0, 1);

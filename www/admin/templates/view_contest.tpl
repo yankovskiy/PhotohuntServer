@@ -30,13 +30,6 @@
 {/section}
 </td>
 <td>
-{if $images[img].image.must_win eq 0}
-    Не задано
-{elseif $images[img].image.must_win eq 1}
-    Да
-{/if}
-</td>
-<td>
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?contest={$images[img].image.contest_id}&id={$images[img].image.id}&type=image&action=edit">Редактировать</a> |
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?contest={$images[img].image.contest_id}&id={$images[img].image.id}&type=image&action=delete" onclick="return confirm('Удалить?');">Удалить</a>
 </td>
