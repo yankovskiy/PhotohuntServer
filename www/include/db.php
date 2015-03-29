@@ -333,7 +333,7 @@ class Database {
     public function getUserWinsRewards($id) {
         $reward = 0;
 
-        $sql = "select (count(id) * rewards) as reward from contests where winner_id = :user_id";
+        $sql = "select sum(rewards) as reward from contests where winner_id = :user_id";
         $params = array("user_id" => $id);
         $stmt = $this->mConnection->prepare($sql);
         $stmt->execute($params);
