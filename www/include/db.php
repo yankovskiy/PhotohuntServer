@@ -51,6 +51,25 @@ class Database {
     }
     
     /**
+     * Получения количества избранных пользователей
+     * @param int $userId id текущего пользователя
+     * @return количество избранных пользователей
+     */
+    public function getFavoritesUsersCount($userId) {
+        $sql = "select count(uid) as count from view_favorites_users where uid = :uid";
+        $params = array("uid" => $userId);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+        
+        $count = 0;
+        if($row = $stmt->fetch()) {
+            $count = $row["count"];
+        }
+        
+        return $count > 0;
+    }
+    
+    /**
      * Проверяет есть ли пользователь уже в избранных
      * @param int $userId id пользователя для проверки
      * @param int $favoriteId id пользователя (избранного)

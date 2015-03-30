@@ -281,6 +281,7 @@ class UserMgmgt {
                     $sendData["money"] = $user->money;
                     $sendData["dc"] = $user->dc;
                     $sendData["unread_messages"] = $this->mDb->getUnreadMessageCount($user->id);
+                    $sendData["is_have_favorites"] = $this->mDb->getFavoritesUsersCount($user->id);
                 } else {
                     $sendData["is_bookmarked"] = $this->mDb->isFavoriteUserExists($auth->getAuthenticatedUser()->id, $user->id);
                 }
