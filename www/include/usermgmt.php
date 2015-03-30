@@ -37,7 +37,7 @@ class UserMgmgt {
         $this->mDb = new Database();
         $this->mDb->connect();
     }
-    
+
     /**
      * Получает список любимых пользователей
      */
@@ -47,7 +47,7 @@ class UserMgmgt {
             $user = $auth->getAuthenticatedUser();
             $users = $this->mDb->getFavoritesUsers($user->id);
             $sendData = array();
-            
+
             foreach ($users as $user) {
                 $data = array();
                 $data["fid"] = $user->fid;
@@ -55,10 +55,10 @@ class UserMgmgt {
                 if (isset($user->avatar) && strlen($user->avatar) > 0) {
                     $data["avatar"] = $user->avatar;
                 }
-                
+
                 $sendData[] = $data;
             }
-            
+
             echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
         }
     }
@@ -79,8 +79,8 @@ class UserMgmgt {
             }
         }
     }
-    
-    
+
+
     /**
      * Получение списка конкурсов в которых победил заданный пользователь
      * @param int $id id пользователя
@@ -88,9 +88,11 @@ class UserMgmgt {
     public function getWinsList($id) {
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
-            $contests = $this->mDb->getWinsList($id);
-            if (isset($contests)) {
-                echo json_encode($contests, JSON_UNESCAPED_UNICODE);
+            if ($id != 1) {
+                $contests = $this->mDb->getWinsList($id);
+                if (isset($contests)) {
+                    echo json_encode($contests, JSON_UNESCAPED_UNICODE);
+                }
             }
         }
     }
@@ -108,14 +110,21 @@ class UserMgmgt {
                 throw new UserException("Несуществующий пользователь");
             }
 
-            $self = ($user->user_id == $auth->getAuthenticatedUserId());
+            if ($id == 1) {
+                $works = 0;
+                $winsRewards = 0;
+                $totalBalance = 0;
+                $otherRewards = 0;
+            } else {
+                $self = ($user->user_id == $auth->getAuthenticatedUserId());
 
-            $works = $this->mDb->getUserImagesCount($id, $self);
-            $winsRewards = $this->mDb->getUserWinsRewards($id);
+                $works = $this->mDb->getUserImagesCount($id, $self);
+                $winsRewards = $this->mDb->getUserWinsRewards($id);
 
-            $totalBalance = $user->balance;
-            $otherRewards = $totalBalance - $works - $winsRewards;
-
+                $totalBalance = $user->balance;
+                $otherRewards = $totalBalance - $works - $winsRewards;
+            }
+            
             $sendData = array("total" => $totalBalance, "works" => $works,
                     "wins_rewards" => $winsRewards, "other" => $otherRewards);
             echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
