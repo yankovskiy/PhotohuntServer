@@ -294,7 +294,26 @@ class Database {
     }
 
     /**
-     * Отмчает сообщение как удаленное из папки
+     * Отмечает сообщения как удаленные из папки
+     * Из входящих "удаляются" только прочитанные
+     * @param int $userId id пользователя для удаления сообщений
+     * @param boolean $isInbox true, если сообщения "удаляются" из входящих
+     */
+    public function markMessagesAsRemoved($userId, $isInbox) {
+        $sql = "update `messages` set ";
+        $params = array("user_id" => $userId);
+        if ($isInbox) {
+            $sql .= "`inbox` = 0 where `to_user_id` = :user_id and `status` = :status";
+            $params["status"] = Message::READ;
+        } else {
+            $sql .= "`outbox` = 0 where `from_user_id` = :user_id";
+        }
+        
+        $this->mConnection->prepare($sql)->execute($params);
+    }
+    
+    /**
+     * Отмечает сообщение как удаленное из папки
      * @param int $id id сообщения для удаления
      * @param boolean $isInbox true если удалить из входящих
      */

@@ -139,13 +139,21 @@ class MessageMgmt {
         if ($auth->authenticate($this->mDb)) {
             $user = $auth->getAuthenticatedUser();
 
-            $message = $this->mDb->getMessage($user->id, $id);
-            if (!$message) {
-                throw new MessageException("Попытка удалить несуществующее сообщение");
+            if (is_numeric($id)) {
+                $message = $this->mDb->getMessage($user->id, $id);
+                if (!$message) {
+                    throw new MessageException("Попытка удалить несуществующее сообщение");
+                }
+                $isInbox = ($user->id == $message->to_user_id);
+    
+                $this->mDb->markMessageAsRemoved($id, $isInbox);
+            } else {
+                if ($id == "inbox") {
+                    $this->mDb->markMessagesAsRemoved($user->id, true);
+                } else if ($id == "outbox") {
+                    $this->mDb->markMessagesAsRemoved($user->id, false);
+                }
             }
-            $isInbox = ($user->id == $message->to_user_id);
-
-            $this->mDb->markMessageAsRemoved($id, $isInbox);
         }
     }
 
