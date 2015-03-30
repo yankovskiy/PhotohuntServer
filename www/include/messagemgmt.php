@@ -51,8 +51,8 @@ class MessageMgmt {
             $inboxMessages = $this->mDb->getInboxMessages($user->id);
             $outboxMessages = $this->mDb->getOutboxMessages($user->id);
 
-            $inbox = $this->prepareData($inboxMessages, true);
-            $outbox = $this->prepareData($outboxMessages, false);
+            $inbox = $this->prepareData($inboxMessages, true, false);
+            $outbox = $this->prepareData($outboxMessages, false, false);
 
             $data = array("inbox" => $inbox, "outbox" => $outbox);
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
@@ -63,12 +63,13 @@ class MessageMgmt {
      * Подготовка данных для отправки клиенту
      * @param array $messages массив Message сообщений для подготовки
      * @param boolean $isInbox true если входящие
+     * @param boolean $isMessage true если нужно в отправку включить текст сообщения
      * @return array массив для отправки
      */
-    private function prepareData($messages, $isInbox) {
+    private function prepareData($messages, $isInbox, $isMessage) {
         $data = array();
         foreach ($messages as $message) {
-            $data[] = $this->prepareElement($message, $isInbox);
+            $data[] = $this->prepareElement($message, $isInbox, $isMessage);
         }
         return $data;
     }
@@ -76,14 +77,17 @@ class MessageMgmt {
     /**
      * Подготовка элемента к отправке
      * @param Message $message собщение для подготовки
+     * @param boolean $isMessage true если нужно в отправку включить текст сообщения
      * @param boolean $isInbox true для входящих
      */
-    private function prepareElement($message, $isInbox) {
+    private function prepareElement($message, $isInbox, $isMessage) {
         $msg = array();
         $msg["id"] = $message->id;
         $msg["date"] = $message->date;
         $msg["title"] = $message->title;
-        $msg["message"] = $message->message;
+        if ($isMessage) {
+            $msg["message"] = $message->message;
+        }
         
         if ($isInbox) {
             $msg["from_user_id"] = $message->from_user_id;
@@ -119,7 +123,7 @@ class MessageMgmt {
             }
 
             $isInbox = ($user->id == $message->to_user_id);
-            $msg = $this->prepareElement($message, $isInbox);
+            $msg = $this->prepareElement($message, $isInbox, true);
 
             if($isInbox && $message->status != Message::READ) {
                 $this->markAsRead($message);
