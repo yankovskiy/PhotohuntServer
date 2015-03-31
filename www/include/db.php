@@ -451,6 +451,7 @@ class Database {
         $sql = "SELECT z.rank FROM (\n"
                 . " SELECT t.id, @rownum := @rownum + 1 AS rank\n"
                         . " FROM users t, (SELECT @rownum := 0) r \n"
+                                . " where no_rating = 0"
                                 . " ORDER BY balance desc, id asc\n"
                                         . ") as z WHERE id=:id";
 
@@ -717,7 +718,7 @@ class Database {
      * @return NULL в случае пустого рейтинга, либо массив объектов класса User
      */
     public function getRating() {
-        $stmt = $this->mConnection->query("select id, display_name, balance from users where balance > 0 and id != 1 order by balance ".
+        $stmt = $this->mConnection->query("select id, display_name, balance from users where balance > 0 and no_rating = 0 order by balance ".
                 "desc, id asc limit 10");
 
         $ret = array();
