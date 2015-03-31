@@ -430,12 +430,14 @@ class Admin {
         }
 
         $user = $this->objectsToArray($this->mDb->getUserById($id));
+        $images = $this->objectsToArray($this->mDb->getUserImages($user["id"]));
         $group_option_values = array("users", "admin");
         $group_option_selected = $user["group"];
         $group_option_output = array("users", "admin");
 
         $smarty = new Smarty();
         $smarty->assign("user", $user);
+        $smarty->assign("images", $images);
         $smarty->assign("group_option_values", $group_option_values);
         $smarty->assign("group_option_selected", $group_option_selected);
         $smarty->assign("group_option_output", $group_option_output);

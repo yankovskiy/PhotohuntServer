@@ -641,6 +641,14 @@ class Database {
          
         return $result;
     }
+    
+    /**
+     * Копирование рейтинга в квартальный рейтинг
+     */
+    public function copyRatingToQuarter() {
+        $sql = "update `users` set `balance_kw` = `balance`";
+        $this->mConnection->exec($sql);
+    }
 
     /**
      * Создает новый конкурс

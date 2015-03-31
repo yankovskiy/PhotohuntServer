@@ -29,7 +29,22 @@
 </table>
 </form>
 <br>
-<br>
-<a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=user&action=add">Новый пользователь</a>
+
+<table border="1" cellpadding="5">
+<tr>
+<td>Фото</td>
+<td>Конкурс</td>
+<td>Тема следующего конкурса</td>
+<td>Количество голосов</td>
+</tr>
+{section name=img loop=$images}
+<tr>
+<td><a href="http://{$smarty.server.SERVER_NAME}/images/{$images[img].id}.jpg"><img src="http://{$smarty.server.SERVER_NAME}/images/{$images[img].id}.jpg" width="30%" height="30%"></a></td>
+<td><a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?type=contest&action=view&id={$images[img].contest_id}">{$images[img].contest_subject}</a></td>
+<td>{$images[img].subject}</td>
+<td>{$images[img].vote_count}</td>
+</tr>
+{/section}
+</table>
 
 {include file="footer.tpl"}
