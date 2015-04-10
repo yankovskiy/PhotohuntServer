@@ -717,17 +717,13 @@ class Database {
      * Получает информацию по top10 пользователям
      * @return NULL в случае пустого рейтинга, либо массив объектов класса User
      */
-    public function getRating() {
-        $stmt = $this->mConnection->query("select id, display_name, balance from users where balance > 0 and no_rating = 0 order by balance ".
+    public function getTop10Rating() {
+        $stmt = $this->mConnection->query("select id, display_name, avatar, balance from users where balance > 0 and no_rating = 0 order by balance ".
                 "desc, id asc limit 10");
 
         $ret = array();
 
-        foreach ($stmt as $row) {
-            $user = array();
-            $user["id"] = $row["id"];
-            $user["display_name"] = $row["display_name"];
-            $user["balance"] = $row["balance"];
+        while($user = $stmt->fetchObject()) {
             $ret[] = $user;
         }
 
@@ -735,6 +731,27 @@ class Database {
             $ret = null;
         }
 
+        return $ret;
+    }
+    
+    /**
+     * Получает информацию по top10 из квартального рейтинга
+     * @return NULL в случае пустого рейтинга, либо массив пользователей из рейтинга
+     */
+    public function getQuarRating() {
+        $sql = "select id, display_name, avatar, (balance - balance_kw) as balance from users where balance > 0 and no_rating = 0 order by balance ".
+                "desc, id asc limit 10";
+        $stmt = $this->mConnection->query($sql);
+        $ret = array();
+        
+        while($user = $stmt->fetchObject()) {
+            $ret[] = $user;
+        }
+        
+        if (count($ret) == 0) {
+            $ret = null;
+        }
+        
         return $ret;
     }
 

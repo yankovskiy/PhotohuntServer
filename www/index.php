@@ -348,7 +348,11 @@ $app->notFound(function () use ($app) {
         $app = \Slim\Slim::getInstance();
         try {
             $user->connectToDb();
-            $user->getRating();
+            if (Common::getClientVersion() < 25) {
+                $user->getRating_api25();
+            } else {
+                $user->getRating();
+            }
         } catch (PDOException $e) {
             $app->halt(500);
         }

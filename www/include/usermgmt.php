@@ -184,15 +184,16 @@ class UserMgmgt {
     }
 
     /**
+     * @deprecated
      * Получает рейтинг (top10) пользователей
      * @return boolean true в случае успешного получения рейтинга
      */
-    public function getRating() {
+    public function getRating_api25() {
         $success = false;
 
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
-            $ratings = $this->mDb->getRating();
+            $ratings = $this->mDb->getTop10Rating();
             if (isset($ratings)) {
                 echo json_encode($ratings, JSON_UNESCAPED_UNICODE);
                 $success = true;
@@ -200,6 +201,20 @@ class UserMgmgt {
         }
 
         return $success;
+    }
+    
+    /**
+     * Получает рейтинг (top10 и квартальный)
+     */
+    public function getRating() {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $top10 = $this->mDb->getTop10Rating();
+            $quart = $this->mDb->getQuarRating();
+            
+            $data = array("top10" => $top10, "quart" => $quart);
+            echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        }
     }
 
     /**
