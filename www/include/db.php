@@ -42,14 +42,14 @@ class Database {
         $stmt = $this->mConnection->prepare($sql);
         $stmt->execute($params);
         $ret = array();
-        
+
         while($row = $stmt->fetchObject()) {
             $ret[] = $row;
         }
-        
+
         return $ret;
     }
-    
+
     /**
      * Получения количества избранных пользователей
      * @param int $userId id текущего пользователя
@@ -60,15 +60,15 @@ class Database {
         $params = array("uid" => $userId);
         $stmt = $this->mConnection->prepare($sql);
         $stmt->execute($params);
-        
+
         $count = 0;
         if($row = $stmt->fetch()) {
             $count = $row["count"];
         }
-        
+
         return $count > 0;
     }
-    
+
     /**
      * Проверяет есть ли пользователь уже в избранных
      * @param int $userId id пользователя для проверки
@@ -79,15 +79,15 @@ class Database {
         $params = array("uid" => $userId, "fid" => $favoriteId);
         $stmt = $this->mConnection->prepare($sql);
         $stmt->execute($params);
-        
+
         $count = 0;
         if($row = $stmt->fetch()) {
             $count = $row["count"];
         }
-        
+
         return $count > 0;
     }
-    
+
     /**
      * Удаление пользователя из списка избранных
      * @param int $userId id владельца списка
@@ -99,7 +99,7 @@ class Database {
         $stmt = $this->mConnection->prepare($sql);
         $stmt->execute($params);
     }
-    
+
     /**
      * Добавление пользователя в список избранных
      * @param int $userId id пользователя владельца списка
@@ -111,7 +111,7 @@ class Database {
         $stmt = $this->mConnection->prepare($sql);
         $stmt->execute($params);
     }
-    
+
     /**
      * Сохраняет сообщение в базу
      * @param Message $message объект для сохранения в базу
@@ -327,10 +327,10 @@ class Database {
         } else {
             $sql .= "`outbox` = 0 where `from_user_id` = :user_id";
         }
-        
+
         $this->mConnection->prepare($sql)->execute($params);
     }
-    
+
     /**
      * Отмечает сообщение как удаленное из папки
      * @param int $id id сообщения для удаления
@@ -452,8 +452,8 @@ class Database {
                 . " SELECT t.id, @rownum := @rownum + 1 AS rank\n"
                         . " FROM users t, (SELECT @rownum := 0) r \n"
                                 . " where no_rating = 0"
-                                . " ORDER BY balance desc, id asc\n"
-                                        . ") as z WHERE id=:id";
+                                        . " ORDER BY balance desc, id asc\n"
+                                                . ") as z WHERE id=:id";
 
         $rank = 0;
 
@@ -642,7 +642,7 @@ class Database {
          
         return $result;
     }
-    
+
     /**
      * Копирование рейтинга в квартальный рейтинг
      */
@@ -733,25 +733,24 @@ class Database {
 
         return $ret;
     }
-    
+
     /**
      * Получает информацию по top10 из квартального рейтинга
      * @return NULL в случае пустого рейтинга, либо массив пользователей из рейтинга
      */
     public function getQuarRating() {
-        $sql = "select id, display_name, avatar, (balance - balance_kw) as balance from users where balance > 0 and no_rating = 0 order by balance ".
-                "desc, id asc limit 10";
+        $sql = "select id, display_name, avatar, (balance - balance_kw) as balance from users where no_rating = 0  having balance > 0 order by balance desc, id asc";
         $stmt = $this->mConnection->query($sql);
         $ret = array();
-        
+
         while($user = $stmt->fetchObject()) {
             $ret[] = $user;
         }
-        
+
         if (count($ret) == 0) {
             $ret = null;
         }
-        
+
         return $ret;
     }
 
