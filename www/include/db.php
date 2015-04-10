@@ -739,7 +739,7 @@ class Database {
      * @return NULL в случае пустого рейтинга, либо массив пользователей из рейтинга
      */
     public function getQuarRating() {
-        $sql = "select id, display_name, avatar, (balance - balance_kw) as balance from users where no_rating = 0  having balance > 0 order by balance desc, id asc";
+        $sql = "select id, display_name, avatar, (balance - balance_kw) as balance from users where no_rating = 0 having balance > 0 order by balance desc, id asc limit 10";
         $stmt = $this->mConnection->query($sql);
         $ret = array();
 
