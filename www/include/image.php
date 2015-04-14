@@ -31,6 +31,7 @@ class Image{
     public $contest_status;
     public $contest_subject;
     public $must_win;
+    public $exif;
     
     /**
      * Конструктор
@@ -52,4 +53,8 @@ class Image{
             }
         }
     }
+}
+
+class Exif {
+    
 }

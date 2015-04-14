@@ -964,12 +964,17 @@ class Database {
 
         try {
             $this->mConnection->beginTransaction();
-            $query = "insert into images (contest_id, user_id, subject) " .
-                    "values (:contest_id, :user_id, :subject)";
+            $query = "insert into images (contest_id, user_id, subject, exif) " .
+                    "values (:contest_id, :user_id, :subject, :exif)";
             $stmt = $this->mConnection->prepare($query);
             $stmt->bindParam(":contest_id", $image->contest_id);
             $stmt->bindParam(":user_id", $image->user_id);
             $stmt->bindParam(":subject", $image->subject);
+            if (isset($image->exif)) {
+                $stmt->bindParam(":exif", $image->exif);
+            } else {
+                $stmt->bindValue(":exif", null);
+            }
             $stmt->execute();
 
             $recordId = $this->mConnection->lastInsertId();

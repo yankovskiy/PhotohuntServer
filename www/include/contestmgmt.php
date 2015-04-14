@@ -133,7 +133,7 @@ class ContestMgmt {
 
         return $success;
     }
-    
+
     /**
      * Получает количество оставшихся голосов у пользователя для конкретного конкурса
      * @param User $user объект содержащий информацию о пользователе
@@ -162,14 +162,14 @@ class ContestMgmt {
                 $votes = $this->getVoteCount($user, $contest);
                 $images = $this->mDb->getImagesForContest($id, $isClosed);
                 $voteList = $this->mDb->getContestVotesByUser($contest->id, $user->id);
-                
+
                 if ($images != null) {
                     $count = 0; // если конкурс закрыт первая работа в списке победитель
-                    
+
                     foreach ($images as $image) {
                         if ($this->isContestOpenForVote($contest)) {
                             $image->is_voted = false;
-                            
+
                             if (isset($voteList)) {
                                 if (in_array($image->id, $voteList)) {
                                     $image->is_voted = true;
@@ -178,7 +178,7 @@ class ContestMgmt {
                         } else {
                             unset($image->is_voted);
                         }
-                        
+
                         if ($this->isContestOpen($contest) && $this->isUserOwnerPhoto($image, $user)) {
                             $image->is_editable = true;
                         } else {
@@ -194,16 +194,16 @@ class ContestMgmt {
                             unset($image->display_name);
                             unset($image->vote_count);
                         }
-                        
+
                         /*
                          * Конкурс закрыт, скрыть темы чужих работ и работ не победивших
-                         */
+                        */
                         if ($isClosed) {
                             if ($count > 0 && $this->isUserOwnerPhoto($image, $user) == false) {
                                 unset($image->subject);
                             }
                         }
-                        
+
                         $count++;
                     }
                 }
@@ -240,6 +240,10 @@ class ContestMgmt {
                         $image->contest_id = $id;
                         $image->user_id = $user->id;
                         $image->subject = $_POST["subject"];
+                        if (isset($_POST["exif"])) {
+                            $image->exif = $this->prepareExif($_POST["exif"]);
+                        }
+
                         $recordId = $this->mDb->addImageToContest($image);
                         if ($recordId != -1) {
                             $file = $_FILES["image"];
@@ -251,12 +255,12 @@ class ContestMgmt {
                                 // изменить количество платных публикаций
                                 if ($isUserCanAddImage["is_shop"]) {
                                     $this->mDb->useUserItems($user->id, Item::EXTRA_PHOTO);
-                                    
+
                                     $date =  date("Y-m-d H:i:s");
                                     $message = sprintf("Использование покупки %s", ITEM::EXTRA_PHOTO);
-                                    
+
                                     $this->mDb->logShopAction($user->id, $date, $message);
-                                    
+
                                 }
                             } else {
                                 $this->mDb->removeImageFromContest($contestId, $recordId);
@@ -274,6 +278,60 @@ class ContestMgmt {
         }
 
         return array("status" => $success, "error" => $error);
+    }
+
+    /**
+     * Подгатавливает exif для публикации в базу
+     * @param json $data
+     * @return Exif
+     */
+    private function prepareExif($data) {
+        $empty = true;
+        $data = json_decode($_POST["exif"]);
+        if (!empty($data)) {
+            $exif = new Exif();
+            
+            if (isset($data->aperture)) {
+                $empty = false;
+                $exif->aperture = $data->aperture;
+            }
+
+            if (isset($data->datetime)) {
+                $empty = false;
+                $exif->datetime = $data->datetime;
+            }
+
+            if (isset($data->exposure_time)) {
+                $empty = false;
+                $exif->exposure_time = $data->exposure_time;
+            }
+
+            if (isset($data->iso)) {
+                $empty = false;
+                $exif->iso = $data->iso;
+            }
+
+            if (isset($data->make)) {
+                $empty = false;
+                $exif->make = $data->make;
+            }
+
+            if (isset($data->model)) {
+                $empty = false;
+                $exif->model = $data->model;
+            }
+
+            if (isset($data->focal_length)) {
+                $empty = false;
+                $exif->focal_length = $data->focal_length;
+            }
+        }
+        
+        if (!$empty) {
+            return json_encode($exif, JSON_UNESCAPED_UNICODE);
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -326,46 +384,46 @@ class ContestMgmt {
     public function voteForContest($id, $body) {
         $success = false;
         $error = null;
-    
+
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
             $contest = $this->mDb->getContest($id);
             if (!isset($contest)) {
                 throw new ContestException("Выбранного конкурса не существует");
             }
-            
+
             if (!$this->isContestOpenForVote($contest)) {
                 throw new ContestException("Сейчас не этап голосования за работы");
             }
-            
+
             $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
             if (!isset($user)) {
                 throw new ContestException("Несуществующий пользователь");
             }
-            
+
             $body = json_decode($body);
             if (!isset($body) || !isset($body->id)) {
                 throw new ContestException("Не задано тело сообщения");
             }
-            
+
             $image = $this->mDb->getImageById($body->id);
             if (!isset($image)) {
                 throw new ContestException("Несуществующее изображение");
             }
-            
+
             if ($this->isUserOwnerPhoto($image, $user)) {
                 throw new ContestException("За свои работы голосовать нельзя");
             }
-            
+
             if ($image->contest_id != $id) {
                 throw new ContestException("В выбранном конкурсе нет такой работы");
             }
-            
+
             $this->mDb->voteForImage($image, $user, Common::getClientIp());
         }
-    
+
     }
-    
+
     /**
      * @deprecated
      * Голосование за изображение на конкурсе. Проголосовать можно только за изображение в конкурсе
@@ -490,7 +548,7 @@ class ContestMgmt {
     private function isContestClose($contest) {
         return $contest->status == Contest::STATUS_CLOSE;
     }
-    
+
     /**
      * @param Contest $contest объект содержащий информацию о конкурсе
      * @return boolean true если конкурс открыт для колосования
