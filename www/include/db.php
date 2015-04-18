@@ -577,7 +577,7 @@ class Database {
      */
     public function createNewContest() {
         $result = false;
-        $sql = "SELECT i.id,i.subject, i.contest_id, i.user_id,c.rewards, c.prev_id,i.vote_count FROM `images` i inner join contests c on (i.contest_id = c.id ) where c.status = 0 and to_days(now()) - to_days(c.close_date) = 1 order by i.vote_count desc limit 1";
+        $sql = "SELECT i.id,i.subject, i.contest_id, i.user_id,c.rewards, c.prev_id,i.vote_count FROM `images` i inner join contests c on (i.contest_id = c.id ) where c.status = 0 and to_days(now()) - to_days(c.close_date) = 1 order by i.vote_count desc, i.id asc limit 1";
         $stmt = $this->mConnection->query($sql);
          
         if ($stmt != false) {
