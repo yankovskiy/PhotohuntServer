@@ -47,7 +47,7 @@ class Image{
             $this->subject = $row["subject"];
             $this->display_name = $row["display_name"];
             $this->vote_count = $row["vote_count"];
-            
+            $this->exif = $row["exif"];
             if ($isAdmin) {
                 $this->must_win = $row["must_win"];
             }
