@@ -163,52 +163,51 @@ class ContestMgmt {
                 $images = $this->mDb->getImagesForContest($id, $isClosed);
                 $voteList = $this->mDb->getContestVotesByUser($contest->id, $user->id);
 
+                $data = null;
+                
                 if ($images != null) {
                     $count = 0; // если конкурс закрыт первая работа в списке победитель
 
+                    $data = array();
+                    
                     foreach ($images as $image) {
+                        $img = array();
+                        
+                        $img["id"] = $image->id;
+                        
                         if ($this->isContestOpenForVote($contest)) {
-                            $image->is_voted = false;
-
-                            if (isset($voteList)) {
-                                if (in_array($image->id, $voteList)) {
-                                    $image->is_voted = true;
-                                }
-                            }
-                        } else {
-                            unset($image->is_voted);
+                            $img["is_voted"] = isset($voteList) && in_array($image->id, $voteList);
                         }
-
-                        if ($this->isContestOpen($contest) && $this->isUserOwnerPhoto($image, $user)) {
-                            $image->is_editable = true;
-                        } else {
-                            $image->is_editable = false;
+                        
+                        if ($this->isContestOpen($contest)) {
+                            $img["is_editable"] = $this->isUserOwnerPhoto($image, $user);
                         }
-
-                        if ($this->isUserOwnerPhoto($image, $user) == false && $isClosed == false) {
-                            unset($image->subject);
-                            unset($image->user_id);
+                        
+                        if (!empty($image->exif)) {
+                            $img["exif"] = json_decode($image->exif);
                         }
-
-                        if ($isClosed == false) {
-                            unset($image->display_name);
-                            unset($image->vote_count);
-                        }
-
-                        /*
-                         * Конкурс закрыт, скрыть темы чужих работ и работ не победивших
-                        */
+                        
                         if ($isClosed) {
-                            if ($count > 0 && $this->isUserOwnerPhoto($image, $user) == false) {
-                                unset($image->subject);
+                            $img["display_name"] = $image->display_name;
+                            $img["vote_count"] = $image->vote_count;
+                            $img["user_id"] = $image->user_id;
+                            
+                            if ($count == 0) {
+                                $img["subject"] = $image->subject;
                             }
                         }
+                        
+                        if ($this->isUserOwnerPhoto($image, $user)) {
+                            $img["subject"] = $image->subject;
+                            $img["user_id"] = $image->user_id;
+                        }
 
+                        $data[] = $img;
                         $count++;
                     }
                 }
 
-                $sendData = array("contest" => $contest, "images" => $images, "votes" => $votes);
+                $sendData = array("contest" => $contest, "images" => $data, "votes" => $votes);
                 echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
                 $success = true;
             }

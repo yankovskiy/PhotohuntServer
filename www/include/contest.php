@@ -36,6 +36,7 @@ class Contest {
     public $display_name;
     public $works;
     public $prev_id;
+    public $avatar;
 
     /**
      * Конструктор
@@ -54,6 +55,7 @@ class Contest {
             $this->display_name = $row["display_name"];
             $this->works = $row["works"];
             $this->prev_id = $row["prev_id"];
+            $this->avatar = $row["avatar"];
         }
     }
 
