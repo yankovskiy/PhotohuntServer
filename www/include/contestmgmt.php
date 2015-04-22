@@ -200,6 +200,7 @@ class ContestMgmt {
                         if ($this->isUserOwnerPhoto($image, $user)) {
                             $img["subject"] = $image->subject;
                             $img["user_id"] = $image->user_id;
+			    $img["display_name"] = $image->display_name;
                         }
 
                         $data[] = $img;
