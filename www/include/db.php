@@ -1343,7 +1343,7 @@ class Database {
         $contest = null;
 
         if($stmt->execute(array('id' => $id))) {
-            if ($row = $stmt->fetch()) {
+            if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $contest = new Contest($row);
             }
         }

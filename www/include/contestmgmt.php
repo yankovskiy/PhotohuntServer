@@ -164,43 +164,49 @@ class ContestMgmt {
                 $voteList = $this->mDb->getContestVotesByUser($contest->id, $user->id);
 
                 $data = null;
-                
+
                 if ($images != null) {
                     $count = 0; // если конкурс закрыт первая работа в списке победитель
 
                     $data = array();
-                    
+
                     foreach ($images as $image) {
                         $img = array();
-                        
+
                         $img["id"] = $image->id;
-                        
+
                         if ($this->isContestOpenForVote($contest)) {
                             $img["is_voted"] = isset($voteList) && in_array($image->id, $voteList);
                         }
-                        
+
                         if ($this->isContestOpen($contest)) {
                             $img["is_editable"] = $this->isUserOwnerPhoto($image, $user);
                         }
-                        
+
                         if (!empty($image->exif)) {
                             $img["exif"] = json_decode($image->exif);
                         }
-                        
+
                         if ($isClosed) {
+                            if (isset($image->avatar) && strlen($image->avatar) > 0) {
+                                $img["avatar"] = $image->avatar;
+                            }
                             $img["display_name"] = $image->display_name;
                             $img["vote_count"] = $image->vote_count;
                             $img["user_id"] = $image->user_id;
-                            
+
                             if ($count == 0) {
                                 $img["subject"] = $image->subject;
                             }
                         }
-                        
+
                         if ($this->isUserOwnerPhoto($image, $user)) {
+                            if (isset($image->avatar) && strlen($image->avatar) > 0) {
+                                $img["avatar"] = $image->avatar;
+                            }
                             $img["subject"] = $image->subject;
                             $img["user_id"] = $image->user_id;
-			    $img["display_name"] = $image->display_name;
+                            $img["display_name"] = $image->display_name;
                         }
 
                         $data[] = $img;
@@ -208,7 +214,21 @@ class ContestMgmt {
                     }
                 }
 
-                $sendData = array("contest" => $contest, "images" => $data, "votes" => $votes);
+                $contestData = array();
+                $contestData["id"] = $contest->id;
+                $contestData["subject"] = $contest->subject;
+                $contestData["rewards"] = $contest->rewards;
+                $contestData["open_date"] = $contest->open_date;
+                $contestData["close_date"] = $contest->close_date;
+                $contestData["status"] = $contest->status;
+                $contestData["user_id"] = $contest->user_id;
+                $contestData["display_name"] = $contest->display_name;
+                $contestData["works"] = $contest->works;
+                $contestData["prev_id"] = $contest->prev_id;
+                if (isset($contest->avatar) && strlen($contest->avatar) > 0) {
+                    $contestData["avatar"] = $contest->avatar;
+                }
+                $sendData = array("contest" => $contestData, "images" => $data, "votes" => $votes);
                 echo json_encode($sendData, JSON_UNESCAPED_UNICODE);
                 $success = true;
             }
@@ -290,7 +310,7 @@ class ContestMgmt {
         $data = json_decode($_POST["exif"]);
         if (!empty($data)) {
             $exif = new Exif();
-            
+
             if (isset($data->aperture)) {
                 $empty = false;
                 $exif->aperture = $data->aperture;
@@ -326,7 +346,7 @@ class ContestMgmt {
                 $exif->focal_length = $data->focal_length;
             }
         }
-        
+
         if (!$empty) {
             return json_encode($exif, JSON_UNESCAPED_UNICODE);
         } else {

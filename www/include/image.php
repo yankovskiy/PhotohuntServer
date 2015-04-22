@@ -32,6 +32,7 @@ class Image{
     public $contest_subject;
     public $must_win;
     public $exif;
+    public $avatar;
     
     /**
      * Конструктор
@@ -48,6 +49,7 @@ class Image{
             $this->display_name = $row["display_name"];
             $this->vote_count = $row["vote_count"];
             $this->exif = $row["exif"];
+            $this->avatar = $row["avatar"];
             if ($isAdmin) {
                 $this->must_win = $row["must_win"];
             }
