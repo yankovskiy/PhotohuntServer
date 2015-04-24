@@ -174,6 +174,7 @@ class ContestMgmt {
                         $img = array();
 
                         $img["id"] = $image->id;
+                        $img["contest_id"] = $image->contest_id;
 
                         if ($this->isContestOpenForVote($contest)) {
                             $img["is_voted"] = isset($voteList) && in_array($image->id, $voteList);
