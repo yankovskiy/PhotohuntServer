@@ -964,8 +964,8 @@ class Database {
 
         try {
             $this->mConnection->beginTransaction();
-            $query = "insert into images (contest_id, user_id, subject, exif) " .
-                    "values (:contest_id, :user_id, :subject, :exif)";
+            $query = "insert into images (`contest_id`, `user_id`, `subject`, `exif`, `description`) " .
+                    "values (:contest_id, :user_id, :subject, :exif, :description)";
             $stmt = $this->mConnection->prepare($query);
             $stmt->bindParam(":contest_id", $image->contest_id);
             $stmt->bindParam(":user_id", $image->user_id);
@@ -975,8 +975,14 @@ class Database {
             } else {
                 $stmt->bindValue(":exif", null);
             }
-            $stmt->execute();
 
+            if (isset($image->description)) {
+                $stmt->bindParam(":description", $image->description);
+            } else {
+                $stmt->bindValue(":description", null);
+            }
+
+            $stmt->execute();
             $recordId = $this->mConnection->lastInsertId();
             $query = "update contests set works = works + 1 where id = :id";
             $stmt = $this->mConnection->prepare($query);

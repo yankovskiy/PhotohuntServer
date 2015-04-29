@@ -187,6 +187,10 @@ class ContestMgmt {
                         if (!empty($image->exif)) {
                             $img["exif"] = json_decode($image->exif);
                         }
+                        
+                        if (isset($image->description) && strlen($image->description) > 0) {
+                            $img["description"] = $image->description;
+                        }
 
                         if ($isClosed) {
                             if (isset($image->avatar) && strlen($image->avatar) > 0) {
@@ -261,16 +265,19 @@ class ContestMgmt {
                         $image->contest_id = $id;
                         $image->user_id = $user->id;
                         $image->subject = $_POST["subject"];
-                        if (isset($_POST["exif"])) {
+                        if (isset($_POST["exif"]) && strlen($_POST["exif"]) > 0) {
                             $image->exif = $this->prepareExif($_POST["exif"]);
+                        }
+                        
+                        if (isset($_POST["description"]) && strlen($_POST["description"]) > 0) {
+                            $image->description = $_POST["description"];
                         }
 
                         $recordId = $this->mDb->addImageToContest($image);
-                        if ($recordId != -1) {
+                        if ($recordId > 0) {
                             $file = $_FILES["image"];
                             $uploadfile = Config::UPLOAD_PATH . basename($recordId . ".jpg");
                             $success = $this->handleUploadedFile($file, $uploadfile);
-
                             if ($success) {
                                 $this->mDb->incrementUserBalance($user->id);
                                 // изменить количество платных публикаций
@@ -286,6 +293,8 @@ class ContestMgmt {
                             } else {
                                 $this->mDb->removeImageFromContest($contestId, $recordId);
                             }
+                        } else {
+                            $error = "Ошибка при загрузке изображения";
                         }
                     } else {
                         $error = "Вы уже загружали работу в этот конкурс";

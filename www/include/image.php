@@ -33,6 +33,7 @@ class Image{
     public $must_win;
     public $exif;
     public $avatar;
+    public $description;
     
     /**
      * Конструктор
@@ -50,6 +51,7 @@ class Image{
             $this->vote_count = $row["vote_count"];
             $this->exif = $row["exif"];
             $this->avatar = $row["avatar"];
+            $this->description = $row["description"];
             if ($isAdmin) {
                 $this->must_win = $row["must_win"];
             }
