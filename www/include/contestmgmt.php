@@ -158,7 +158,7 @@ class ContestMgmt {
 
             if (isset($contest)) {
                 $isClosed = $this->isContestClose($contest);
-                $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+                $user = $auth->getAuthenticatedUser();
                 $votes = $this->getVoteCount($user, $contest);
                 $images = $this->mDb->getImagesForContest($id, $isClosed);
                 $voteList = $this->mDb->getContestVotesByUser($contest->id, $user->id);
@@ -175,6 +175,8 @@ class ContestMgmt {
 
                         $img["id"] = $image->id;
                         $img["contest_id"] = $image->contest_id;
+                        $img["comments_count"] = $image->comments_count;
+                        $img["contest_status"] = $image->contest_status;
 
                         if ($this->isContestOpenForVote($contest)) {
                             $img["is_voted"] = isset($voteList) && in_array($image->id, $voteList);
@@ -187,7 +189,7 @@ class ContestMgmt {
                         if (!empty($image->exif)) {
                             $img["exif"] = json_decode($image->exif);
                         }
-                        
+
                         if (isset($image->description) && strlen($image->description) > 0) {
                             $img["description"] = $image->description;
                         }
@@ -243,6 +245,72 @@ class ContestMgmt {
     }
 
     /**
+     * Подготовка данных об изображении для отправки
+     * @param Image $image объект содержащий информацию о картинке
+     * @param Contest $contest объект содержащий информацию о конкурсе
+     * @return array массив содержащий информацию о картинке для отправки клиенту
+     */
+    private function prepareImageData($image, $contest) {
+
+    }
+
+    /**
+     * Получение информации о картинке по ее id
+     * Запросить информацию можно только по своей картинке
+     * @param int $imageId id изображения для получения информации
+     */
+    public function getImageById($imageId) {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $image = $this->mDb->getImageById($imageId);
+            if (empty($image)) {
+                throw new ContestException("Запрос несуществующей фотографии");
+            }
+
+            $user = $auth->getAuthenticatedUser();
+            if ($user->id != $image->user_id) {
+                throw new ContestException("Запрос чужой фотографии");
+            }
+
+            $img = array();
+
+            $img["id"] = $image->id;
+            $img["contest_id"] = $image->contest_id;
+            $img["comments_count"] = $image->comments_count;
+            $img["contest_status"] = $image->contest_status;
+
+            if ($image->contest_status == Contest::STATUS_VOTES) {
+                $img["is_voted"] = isset($voteList) && in_array($image->id, $voteList);
+            }
+
+            if ($image->contest_status == Contest::STATUS_OPEN) {
+                $img["is_editable"] = $this->isUserOwnerPhoto($image, $user);
+            }
+
+            if (!empty($image->exif)) {
+                $img["exif"] = json_decode($image->exif);
+            }
+
+            if (isset($image->description) && strlen($image->description) > 0) {
+                $img["description"] = $image->description;
+            }
+
+            if (isset($image->avatar) && strlen($image->avatar) > 0) {
+                $img["avatar"] = $image->avatar;
+            }
+            $img["display_name"] = $image->display_name;
+            $img["user_id"] = $image->user_id;
+            $img["subject"] = $image->subject;
+
+            if ($image->contest_status == Contest::STATUS_CLOSE) {
+                $img["vote_count"] = $image->vote_count;
+            }
+            
+            echo json_encode($img, JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
      * Добавить изображение на конкурс. Изображение может быть добавлено только в открытый конкурс
      * @param int $id id конкурса
      * @return array (status, error). Boolean status false в случае ошибки, string error содержит текст ошибки
@@ -268,7 +336,7 @@ class ContestMgmt {
                         if (isset($_POST["exif"]) && strlen($_POST["exif"]) > 0) {
                             $image->exif = $this->prepareExif($_POST["exif"]);
                         }
-                        
+
                         if (isset($_POST["description"]) && strlen($_POST["description"]) > 0) {
                             $image->description = $_POST["description"];
                         }

@@ -24,12 +24,135 @@ require_once 'contest.php';
 require_once 'image.php';
 require_once 'common.php';
 require_once 'message.php';
+require_once 'comment.php';
 
 /**
  * Класс для работы с базой данных
  */
 class Database {
     private $mConnection;
+
+    /**
+     * Получает список непрочитанных комментариев
+     * @param unknown $userId
+     * @return array объектов Comment либо null если список пуст
+     */
+    public function getUnreadComments($userId) {
+        $sql = "select * from view_comments where owner_id = :user_id and is_read = 0 and user_id != :user_id";
+        $params = array("user_id" => $userId);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+
+        $ret = array();
+        while($row = $stmt->fetchObject("Comment")) {
+            $ret[] = $row;
+        }
+
+        if (count($ret) == 0) {
+            $ret = null;
+        }
+
+        return $ret;
+    }
+    
+    /**
+     * Получение количества непрочитанных комментариев к фотографиям
+     * @param int $userId id пользователя для которогог посчитать количество
+     * @return int количество непрочитанных комментариев у пользователя
+     */
+    public function getUnreadCommentsCount($userId) {
+        $sql = "select count(id) as count from view_comments where owner_id = :user_id and is_read = 0 and user_id != :user_id";
+        $params = array("user_id" => $userId);
+        $stmt = $this->mConnection->prepare($sql);
+        $count = 0;
+
+        if($stmt->execute($params)) {
+            if ($row = $stmt->fetch()) {
+                $count = $row["count"];
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Отмечает все комментарии к изображению, как прочитанные
+     * @param unknown $imageId
+     */
+    public function markCommentsAsRead($imageId) {
+        $sql = "update comments set is_read = 1 where image_id = :image_id";
+        $params = array("image_id" => $imageId);
+        $this->mConnection->prepare($sql)->execute($params);
+    }
+
+    /**
+     * Добавление комментария к фотографии
+     * @param int $imageId id фотографии
+     * @param int $userId id пользователя добавляющего комментарий
+     * @param string $comment комментарий
+     */
+    public function addImageComments($imageId, $userId, $comment) {
+        try {
+            $sql = "insert into comments (`user_id`, `image_id`, `datetime`, `comment`) ".
+                    "values (:user_id, :image_id, :datetime, :comment)";
+
+            $params = array(
+                    "user_id" => $userId,
+                    "image_id" => $imageId,
+                    "datetime" => date("Y-m-d H:i:s"),
+                    "comment" => $comment
+            );
+
+            $this->mConnection->beginTransaction();
+            $stmt = $this->mConnection->prepare($sql);
+            $stmt->execute($params);
+
+            $sql = "update images set `comments_count` = `comments_count` + 1 where id = :image_id";
+            $params = array("image_id" => $imageId);
+            $stmt = $this->mConnection->prepare($sql);
+            $stmt->execute($params);
+
+            $this->mConnection->commit();
+        } catch (PDOException $e) {
+            $this->mConnection->rollBack();
+        }
+    }
+
+    /**
+     * Получить комментарий по его id
+     * @param int $id
+     * @return Comment комментарий или false в случае ошибки
+     */
+    public function getImageCommentById($id) {
+        $sql = "select * from view_comments where id = :id";
+        $params = array("id" => $id);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchObject("Comment");
+    }
+
+    /**
+     * Удаление комментария
+     * @param int $id id комментария
+     * @param int $imageId id фотографии
+     */
+    public function removeComment($id, $imageId) {
+        try {
+            $this->mConnection->beginTransaction();
+
+            $sql = "delete from comments where id = :id and image_id = :image_id";
+            $params = array("id" => $id, "image_id" => $imageId);
+            $this->mConnection->prepare($sql)->execute($params);
+
+            $sql = "update images set `comments_count` = `comments_count` - 1 where id = :image_id";
+            $params = array("image_id" => $imageId);
+            $this->mConnection->prepare($sql)->execute($params);
+
+            $this->mConnection->commit();
+        } catch (PDOException $e) {
+            $this->mConnection->rollBack();
+        }
+    }
 
     /**
      * Получения списка избранных пользователей
@@ -694,23 +817,41 @@ class Database {
 
     /**
      * @param int $id id записи с изображением
-     * @param boolean $isAdmin true если доступ к функции осуществляется из админки
      * @return Image объект содержащий информацию об изображении, либо NULL если изображение не
      * найдено
      */
-    public function getImageById($id, $isAdmin = true) {
+    public function getImageById($id) {
         $stmt = $this->mConnection->prepare("select * from view_images where id = :id");
 
         $image = null;
         $params = array("id" => $id);
 
         if($stmt->execute($params)) {
-            if($row = $stmt->fetch()) {
-                $image = new Image($row, $isAdmin);
-            }
+            $image = $stmt->fetchObject("Image");
         }
 
         return $image;
+    }
+
+    /**
+     * Получение списка комментариев для изображения.
+     * @param int $id id изображения
+     * @return массив объектов типа Comment
+     */
+    public function getImageComments($id) {
+        $stmt = $this->mConnection->prepare("select * from view_comments where image_id = :id");
+        $params = array("id" => $id);
+        $stmt->execute($params);
+        $ret = array();
+        while($row = $stmt->fetchObject()) {
+            $ret[] = $row;
+        }
+
+        if (count($ret) == 0) {
+            $ret = null;
+        }
+
+        return $ret;
     }
 
     /**
@@ -1402,10 +1543,9 @@ class Database {
      * @param id $contestId id конкурса для которого необходимо получить массив картинок
      * @param boolean $isClosed true если конкурс закрыт, при этом картинки будут отсортированны
      * по рейтингу
-     * @param boolean $isAdmin true если обращение происходит из админки и нужно получить дополнительные поля
      * @return array массив объектов Image, либо null в случае отсутствия
      */
-    public function getImagesForContest($contestId, $isClosed, $isAdmin = false) {
+    public function getImagesForContest($contestId, $isClosed) {
         $images = array();
         if ($isClosed) {
             $query = "select * from view_images where contest_id = :contest_id order by vote_count desc, id asc";
@@ -1415,9 +1555,8 @@ class Database {
         $stmt = $this->mConnection->prepare($query);
 
         if ($stmt->execute(array("contest_id" => $contestId))) {
-            while($row = $stmt->fetch()) {
-                $image = new Image($row, $isAdmin);
-                $images[] = $image;
+            while($row = $stmt->fetchObject("Image")) {
+                $images[] = $row;
             }
         }
 

@@ -34,6 +34,7 @@ class Image{
     public $exif;
     public $avatar;
     public $description;
+    public $comments_count;
     
     /**
      * Конструктор

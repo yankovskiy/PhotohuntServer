@@ -35,3 +35,7 @@ class ShopException extends Exception {
 class MessageException extends Exception {
     
 }
+
+class CommentException extends Exception {
+    
+}

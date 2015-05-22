@@ -23,6 +23,7 @@ require_once 'include/common.php';
 require_once 'include/exceptions.php';
 require_once 'include/shopmgmt.php';
 require_once 'include/messagemgmt.php';
+require_once 'include/commentmgmt.php';
 
 $app = new \Slim\Slim();
 $app->contentType('text/html; charset=utf-8');
@@ -52,6 +53,7 @@ $app->notFound(function () use ($app) {
     $app->put('/contest/:id', 'voteForContest');      // голосование за изображение
     $app->delete('/image/:id', 'deleteImage');        // удаление своего изображения
     $app->put('/image/:id', 'updateImage');           // изменение информации о своем изображении
+    $app->get('/image/:id', 'getImageById');          // получение информации о фотографии по ее id
 
     /* shop management */
     $app->get('/shop', 'getShop');                    // список всех продоваемых товаров
@@ -68,8 +70,102 @@ $app->notFound(function () use ($app) {
     /* favorites user management */
     $app->get('/favorites/users', 'getFavoritesUsers');        // Получить список любимых авторов
     $app->put('/favorites/users/:id', 'updateFavoriteUser');   // Добавить / убрать любимого автора
-
+    
+    /* comments management */
+    $app->get('/image/:id/comments', 'getImageComments');
+    $app->post('/image/:id/comments', 'addImageComments');
+    $app->delete('/comments/:id', 'removeComment');
+    $app->get('/comments/unread', 'getUnreadComments');
+    
     $app->run();
+    
+    function getImageById($id) {
+        $contest = new ContestMgmt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $contest->conenctToDb();
+            try {
+                $contest->getImageById($id);
+            } catch (ContestException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function getUnreadComments() {
+        $comment = new CommentMgmgt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $comment->connectToDb();
+            try {
+                $comment->getUnreadComments();
+            } catch (CommentException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function getImageComments($id) {
+        $comment = new CommentMgmgt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $comment->connectToDb();
+            try {
+                $comment->getImageComments($id);
+            } catch (CommentException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function addImageComments($id) {
+        $comment = new CommentMgmgt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $comment->connectToDb();
+            try {
+                $comment->addImageComments($id);
+            } catch (CommentException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            } catch (MessageException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function removeComment($id) {
+        $comment = new CommentMgmgt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $comment->connectToDb();
+            try {
+                $comment->removeComment($id);
+            } catch (CommentException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
     
     function getFavoritesUsers() {
         $user = new UserMgmgt();
