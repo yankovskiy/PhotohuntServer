@@ -224,7 +224,7 @@ class UserMgmgt {
     public function getUserImages($userId) {
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
-            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            $user = $auth->getAuthenticatedUser();
             $images = $this->mDb->getUserImages($userId);
 
             $sendData = array();
@@ -234,7 +234,18 @@ class UserMgmgt {
                 $data["id"] = $image->id;
                 $data["contest_id"] = $image->contest_id;
                 $data["contest_subject"] = $image->contest_subject;
-
+                $data["comments_count"] = $image->comments_count;
+                $data["contest_status"] = $image->contest_status;
+                $data["user_id"] = $image->user_id;
+                
+                if (!empty($image->exif) && strlen($image->exif) > 0) {
+                    $data["exif"] = json_decode($image->exif);
+                }
+                
+                if (isset($image->description) && strlen($image->description) > 0) {
+                    $data["description"] = $image->description;
+                }
+                
                 if ($status == Contest::STATUS_CLOSE) {
                     $data["vote_count"] = $image->vote_count;
                 }

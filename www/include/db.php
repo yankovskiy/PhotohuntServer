@@ -600,18 +600,11 @@ class Database {
     public function getUserImages($id) {
         $data = array();
 
-        $sql = "select id, contest_id, subject, vote_count, contest_status, contest_subject from view_images where user_id = :id order by id desc";
+        $sql = "select * from view_images where user_id = :id order by id desc";
         $stmt = $this->mConnection->prepare($sql);
         if ($stmt->execute(array("id" => $id))) {
-            while($row = $stmt->fetch()) {
-                $image = new Image();
-                $image->id = $row["id"];
-                $image->contest_id = $row["contest_id"];
-                $image->subject = $row["subject"];
-                $image->vote_count = $row["vote_count"];
-                $image->contest_status = $row["contest_status"];
-                $image->contest_subject = $row["contest_subject"];
-                $data[] = $image;
+            while($row = $stmt->fetchObject("Image")) {
+                $data[] = $row;
             }
         }
 

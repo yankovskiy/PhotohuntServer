@@ -186,7 +186,7 @@ class ContestMgmt {
                             $img["is_editable"] = $this->isUserOwnerPhoto($image, $user);
                         }
 
-                        if (!empty($image->exif)) {
+                        if (!empty($image->exif) && strlen($image->exif) > 0) {
                             $img["exif"] = json_decode($image->exif);
                         }
 
