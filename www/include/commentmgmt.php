@@ -86,7 +86,7 @@ class CommentMgmgt {
 
                     if (($image->user_id != $comment->user_id) ||
                     ($image->contest_status == Contest::STATUS_CLOSE)) {
-                        if (isset($row["avatar"]) && strlen($row["avatar"]) > 0) {
+                        if (isset($comment->avatar) && strlen($comment->avatar) > 0) {
                             $row["avatar"] = $comment->avatar;
                         }
                         $row["user_id"] = $comment->user_id;
