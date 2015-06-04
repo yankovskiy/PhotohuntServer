@@ -1221,17 +1221,20 @@ class Database {
         $stmt = $this->mConnection->prepare($query);
         $stmt->execute($params);
     }
-
+    
     /**
-     * Меняет новую тему у изображения
-     * @param id $id id изображения
-     * @param string $subject новая тема
+     * Обновляет информацию о изображении
+     * @param Image $image объект содержащий информацию о изображении
      */
-    public function updateImageSubject($id, $subject) {
-        $query = "update images set subject = :subject where id = :id";
-        $params = array("subject" => $subject, "id" => $id);
-        $stmt = $this->mConnection->prepare($query);
-        $stmt->execute($params);
+    public function updateImage($image) {
+        $sql = "update `images` set `subject` = :subject, `description` = :description where `id` = :id";
+        $params = array(
+                "subject" => $image->subject, 
+                "id" => $image->id, 
+                "description" => $image->description
+        );
+        
+        $this->mConnection->prepare($sql)->execute($params);
     }
 
     /**

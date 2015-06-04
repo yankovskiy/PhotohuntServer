@@ -612,7 +612,7 @@ class ContestMgmt {
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
             $image = $this->mDb->getImageById($id);
-            if (!isset($image)) {
+            if (empty($image)) {
                 throw new ContestException("Указанного изображения не существует");
             }
 
@@ -622,7 +622,7 @@ class ContestMgmt {
             }
 
             $contest = $this->mDb->getContest($image->contest_id);
-            if (!isset($contest)) {
+            if (empty($contest)) {
                 throw new ContestException("Конкурса не существует");
             }
 
@@ -635,7 +635,13 @@ class ContestMgmt {
                 throw new ContestException("Незадана новая тема");
             }
 
-            $this->mDb->updateImageSubject($id, $body->subject);
+            $image = new Image();
+            $image->id = $id;
+            $image->subject = $body->subject;
+            if (isset($body->description) && strlen($body->description) > 0) {
+                $image->description = $body->description;
+            }
+            $this->mDb->updateImage($image);
         }
     }
 
