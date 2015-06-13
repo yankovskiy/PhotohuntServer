@@ -25,7 +25,7 @@ function changeStatus () {
         $contest->conenctToDb();
         $contest->changeStatusToVote();
         if($contest->changeStatusToClose()) {
-            $contest->createNewContest();
+            $contest->createNewContests();
         }
     } catch (PDOException $e) {
 

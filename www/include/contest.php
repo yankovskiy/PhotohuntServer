@@ -23,8 +23,8 @@ class Contest {
     const STATUS_CLOSE = 0;
     const STATUS_OPEN = 1;
     const STATUS_VOTES = 2;
-    
     const MAX_VOTES = 3;
+    const USER_CONTEST = 1;
     
     public $id;
     public $subject;
@@ -37,6 +37,7 @@ class Contest {
     public $works;
     public $prev_id;
     public $avatar;
+    public $is_user_contest;
 
     /**
      * Конструктор
@@ -56,6 +57,7 @@ class Contest {
             $this->works = $row["works"];
             $this->prev_id = $row["prev_id"];
             $this->avatar = $row["avatar"];
+            $this->is_user_contest = $row["is_user_contest"];
         }
     }
 

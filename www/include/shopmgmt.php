@@ -43,7 +43,7 @@ class ShopMgmt {
                 throw new ShopException("Проблема в работе магазина");
             }
 
-            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            $user = $auth->getAuthenticatedUser();
             $userItems = $this->mDb->getUserItems($user->id);
             $money = $user->money;
             $dc = $user->dc;

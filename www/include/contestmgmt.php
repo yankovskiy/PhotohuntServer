@@ -49,10 +49,33 @@ class ContestMgmt {
     }
 
     /**
+     * Получаение списка открытых конкурсов и дополнительной информации о пользователе
+     */
+    public function getOpenContests() {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $contests = $this->mDb->getOpenContests();
+            $user = $auth->getAuthenticatedUser();
+            
+            if (empty($contests)) {
+                throw new ContestException("Конкурсов не найдено");
+            }
+            
+            $data = array(
+                    "is_can_create" => $this->mDb->isGoodsExists($user->id, Item::EXTRA_CONTEST),
+                    "contests" => $contests
+            );
+            
+            echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        }
+    }
+    
+    /**
+     * @deprecated
      * Получает информацию о всех проводимых конкурсах
      * @return false в случае ошибки
      */
-    public function getOpenContests() {
+    public function getOpenContests_api28() {
         $success = false;
 
         $auth = new Auth();
@@ -87,11 +110,53 @@ class ContestMgmt {
     }
 
     /**
-     * Создает новый конкурс. Данные берутся из работы победителя
-     * @return true в случае успешного создания конкурса
+     * Создает новые конкурсы. Данные берутся из работы победителя
      */
-    public function createNewContest() {
-        return $this->mDb->createNewContest();
+    public function createNewContests() {
+        return $this->mDb->createNewContests();
+    }
+
+    /**
+     * Создание пользовательского конкурса
+     * @param json_data $body данные о создаваемом конкурсе
+     */
+    public function createUserContest($body) {
+        $auth = new Auth();
+        if ($auth->authenticate($this->mDb)) {
+            $user = $auth->getAuthenticatedUser();
+
+            if (empty($body)) {
+                throw new ContestException("Не задана информация о новом конкурсе");
+            }
+
+            if (!$this->mDb->isGoodsExists($user->id, Item::EXTRA_CONTEST)) {
+                throw new ContestException("Вы не купили возможность создавать новый конкурс");
+            }
+
+            $body = json_decode($body);
+            if (empty($body->subject)) {
+                throw new ContestException("Не задана тема конкурса");
+            }
+
+            if (empty($body->rewards)) {
+                throw new ContestException("Не задана награда за конкурс");
+            }
+            
+            if (!is_numeric($body->rewards) || $body->rewards > 10 || $body->rewards <= 0) {
+                throw new ContestException("Некорректное значение награды за конкурс");
+            }
+
+            if ($this->mDb->useUserItems($user->id, ITEM::EXTRA_CONTEST)) {
+                $contest = new Contest();
+                $contest->user_id = $user->id;
+                $contest->subject = $body->subject;
+                $contest->rewards = $body->rewards;
+                $this->mDb->createUserContest($contest);
+                $date =  date("Y-m-d H:i:s");
+                $message = sprintf("Использование покупки %s", ITEM::EXTRA_CONTEST);
+                $this->mDb->logShopAction($user->id, $date, $message);
+            }
+        }
     }
 
     /**
@@ -232,6 +297,7 @@ class ContestMgmt {
                 $contestData["display_name"] = $contest->display_name;
                 $contestData["works"] = $contest->works;
                 $contestData["prev_id"] = $contest->prev_id;
+                $contestData["is_user_contest"] = $contest->is_user_contest;
                 if (isset($contest->avatar) && strlen($contest->avatar) > 0) {
                     $contestData["avatar"] = $contest->avatar;
                 }
@@ -305,11 +371,20 @@ class ContestMgmt {
             if ($image->contest_status == Contest::STATUS_CLOSE) {
                 $img["vote_count"] = $image->vote_count;
             }
-            
+
             echo json_encode($img, JSON_UNESCAPED_UNICODE);
         }
     }
 
+    /**
+     * Проверяет, является ли конкурс пользовательским
+     * @param Contest $contest информация о конкурсе
+     * @return boolean true если конкурс пользовательский
+     */
+    private function isUserContest($contest) {
+        return $contest->is_user_contest == 1;
+    }
+    
     /**
      * Добавить изображение на конкурс. Изображение может быть добавлено только в открытый конкурс
      * @param int $id id конкурса
@@ -325,8 +400,8 @@ class ContestMgmt {
             // конкурс существует и он в статусе "прием работ"
             if (isset($contest) && $this->isContestOpen($contest)) {
                 $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
-                // пользователь существует и пользователь не создатель конкурса
-                if (isset($user) && $this->isUserOwnerContest($contest, $user) == false) {
+                // пользователь существует и пользователь не создатель конкурса, или это пользовательский конкурс
+                if (isset($user) && ($this->isUserOwnerContest($contest, $user) == false || $this->isUserContest($contest))) {
                     $isUserCanAddImage = $this->isUserCanAddImage($contest, $user);
                     if ($isUserCanAddImage["status"]){
                         $image = new Image();

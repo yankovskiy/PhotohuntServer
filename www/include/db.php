@@ -54,7 +54,7 @@ class Database {
 
         return $ret;
     }
-    
+
     /**
      * Получение количества непрочитанных комментариев к фотографиям
      * @param int $userId id пользователя для которогог посчитать количество
@@ -646,8 +646,7 @@ class Database {
         $params = array("status" => $status, "days" => $days, "old_status" => $oldStatus);
 
         $stmt->execute($params);
-
-        return $stmt->rowCount() == 1;
+        return $stmt->rowCount() > 0;
     }
 
     /**
@@ -686,77 +685,84 @@ class Database {
     }
 
     /**
-     * Создает новый конкурс
-     * Создает новый конкурс с темой заданной победителем в предыдущем конкурсе
-     * Начисляет очки победителю
-     * @return true в случае успешно создания конкурса
+     * Создание новых конкурсов
+     * Создает новые конкурсы с темами заданными победителями в предыдущем конкурсе
      */
-    public function createNewContest() {
-        $result = false;
-        $sql = "SELECT i.id,i.subject, i.contest_id, i.user_id,c.rewards, c.prev_id,i.vote_count FROM `images` i inner join contests c on (i.contest_id = c.id ) where c.status = 0 and to_days(now()) - to_days(c.close_date) = 1 order by i.vote_count desc, i.id asc limit 1";
-        $stmt = $this->mConnection->query($sql);
-         
-        if ($stmt != false) {
-            if ($row = $stmt->fetch()) {
-                try {
-                    $sql = "SELECT i.id,i.subject, i.contest_id, i.user_id,c.rewards, c.prev_id FROM `images` i inner join contests c on (i.contest_id = c.id ) where c.status = 0 and to_days(now()) - to_days(c.close_date) = 1 and i.must_win = 1";
-                    $mustWin = false;
+    public function createNewContests() {
+        $sql = "select `id`, `rewards`, `is_user_contest` from `contests` where `status` = 0 and to_days(now()) - to_days(`close_date`) = 1 and `winner_id` is null order by id asc";
+        $contests = $this->mConnection->query($sql);
+        try{
+            $this->mConnection->beginTransaction();
 
-                    if ($row1 = $this->mConnection->query($sql)->fetch()) {
-                        $mustWin = ($row["id"] != $row1["id"]);
-                    }
+            while($contest = $contests->fetch(PDO::FETCH_ASSOC)) {
+                $sql = "set @max_val = (select max(`vote_count`) from `images` where `contest_id` = :contest_id);" .
+                        "update `images` set `vote_count` = @max_val + 1 where `contest_id` = :contest_id and must_win = 1";
+                $params = array(
+                        "contest_id" => $contest["id"],
+                );
+                $this->mConnection->prepare($sql)->execute($params);
 
-                    if ($mustWin) {
-                        $winner_id = $row1["user_id"];
-                        $user_id = $row1["user_id"];
-                        $subject = $row1["subject"];
-                        $image_id = $row1["id"];
-                        $vote_count = $row["vote_count"]; // количество голосов у работы-победителя
-                    } else {
-                        $winner_id = $row["user_id"];
-                        $user_id = $row["user_id"];
-                        $subject = $row["subject"];
-                    }
+                $sql = "select `id`, `subject`, `user_id` from `images` where `contest_id` = :contest_id order by `vote_count` desc, id asc limit 1";
+                $images = $this->mConnection->prepare($sql);
+                $images->execute($params);
+                $image = $images->fetch(PDO::FETCH_ASSOC);
 
-                    $id = $row["contest_id"];
-                    $prev_id = $row["contest_id"];
-                    $rewards = $row["rewards"];
+                $sql = "update `contests` set `winner_id` = :winner_id where `id` = :contest_id";
+                $params = array(
+                        "contest_id" => $contest["id"],
+                        "winner_id" => $image["user_id"]
+                );
+                $this->mConnection->prepare($sql)->execute($params);
 
-                    $this->mConnection->beginTransaction();
-
-                    if ($mustWin) {
-                        $sql = "update images set vote_count = :vote_count + 1 where id = :id";
-                        $params = array("vote_count" => $vote_count, "id" => $image_id);
-                        $this->mConnection->prepare($sql)->execute($params);
-                    }
-
-                    $sql = "update contests set winner_id = :winner_id where id = :id";
-                    $params = array("winner_id" => $winner_id, "id" => $id);
-                    $stmt1 = $this->mConnection->prepare($sql);
-                    $stmt1->execute($params);
-
-                    $query = "insert into contests (subject, open_date, close_date, user_id, prev_id) values (:subject, :open_date, :close_date, :user_id, :prev_id)";
+                if ($contest["is_user_contest"] == 0) {
+                    $sql = "insert into `contests` (`subject`, `open_date`, `close_date`, `user_id`, `prev_id`) values (:subject, :open_date, :close_date, :user_id, :prev_id)";
                     $open_date = date('Y-m-d');
                     $close_date = date('Y-m-d', strtotime("+3 days"));
-                    $params = array("user_id" => $user_id, "subject" => $subject,
-                            "open_date" => $open_date, "close_date" => $close_date,
-                            "prev_id" => $prev_id
+                    $params = array(
+                            "user_id" => $image["user_id"],
+                            "subject" => $image["subject"],
+                            "open_date" => $open_date,
+                            "close_date" => $close_date,
+                            "prev_id" => $contest["id"]
                     );
-                    $stmt2 = $this->mConnection->prepare($query);
-                    if($stmt2->execute($params)) {
-                        $query = "update users set balance = balance + :rewards, `money` = `money` + :rewards where id = :user_id";
-                        $params = array("user_id" => $user_id, "rewards" => $rewards);
-                        $stmt = $this->mConnection->prepare($query);
-                        $result = $stmt->execute($params);
-                        $this->mConnection->commit();
-                    }
-                } catch (PDOException $e) {
-                    $this->mConnection->rollBack();
+                    $this->mConnection->prepare($sql)->execute($params);
+                    
+                    $sql = "update `users` set `balance` = `balance` + :rewards, `money` = `money` + :rewards where `id` = :user_id";
+                } else {
+                    // в пользовательском конкурсе не начислять фотокойны
+                    $sql = "update `users` set `balance` = `balance` + :rewards where `id` = :user_id";
                 }
+
+                $params = array(
+                        "user_id" => $image["user_id"],
+                        "rewards" => $contest["rewards"]
+                );
+                $this->mConnection->prepare($sql)->execute($params);
             }
+
+            $this->mConnection->commit();
+        } catch (Exception $e) {
+            $this->mConnection->rollBack();
         }
-         
-        return $result;
+    }
+
+    /**
+     * Создание пользовательского конкурса
+     * @param Contest $contest
+     */
+    public function createUserContest($contest) {
+        $sql = "insert into `contests` (`subject`, `open_date`, `close_date`, `user_id`, `prev_id`, `rewards`, `is_user_contest`) ".
+                "values (:subject, :open_date, :close_date, :user_id, :prev_id, :rewards, :is_user_contest)";
+        $params = array(
+                "subject" => $contest->subject,
+                "open_date" => date('Y-m-d'),
+                "close_date" => date('Y-m-d', strtotime("+3 days")),
+                "user_id" => $contest->user_id,
+                "prev_id" => 0,
+                "rewards" => $contest->rewards,
+                "is_user_contest" => 1
+        );
+        $this->mConnection->prepare($sql)->execute($params);
     }
 
     /**
@@ -1221,7 +1227,7 @@ class Database {
         $stmt = $this->mConnection->prepare($query);
         $stmt->execute($params);
     }
-    
+
     /**
      * Обновляет информацию о изображении
      * @param Image $image объект содержащий информацию о изображении
@@ -1229,11 +1235,11 @@ class Database {
     public function updateImage($image) {
         $sql = "update `images` set `subject` = :subject, `description` = :description where `id` = :id";
         $params = array(
-                "subject" => $image->subject, 
-                "id" => $image->id, 
+                "subject" => $image->subject,
+                "id" => $image->id,
                 "description" => $image->description
         );
-        
+
         $this->mConnection->prepare($sql)->execute($params);
     }
 
