@@ -56,20 +56,20 @@ class ContestMgmt {
         if ($auth->authenticate($this->mDb)) {
             $contests = $this->mDb->getOpenContests();
             $user = $auth->getAuthenticatedUser();
-            
+
             if (empty($contests)) {
                 throw new ContestException("Конкурсов не найдено");
             }
-            
+
             $data = array(
                     "is_can_create" => $this->mDb->isGoodsExists($user->id, Item::EXTRA_CONTEST),
                     "contests" => $contests
             );
-            
+
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
         }
     }
-    
+
     /**
      * @deprecated
      * Получает информацию о всех проводимых конкурсах
@@ -141,7 +141,7 @@ class ContestMgmt {
             if (empty($body->rewards)) {
                 throw new ContestException("Не задана награда за конкурс");
             }
-            
+
             if (!is_numeric($body->rewards) || $body->rewards > 10 || $body->rewards <= 0) {
                 throw new ContestException("Некорректное значение награды за конкурс");
             }
@@ -384,7 +384,7 @@ class ContestMgmt {
     private function isUserContest($contest) {
         return $contest->is_user_contest == 1;
     }
-    
+
     /**
      * Добавить изображение на конкурс. Изображение может быть добавлено только в открытый конкурс
      * @param int $id id конкурса
@@ -691,7 +691,7 @@ class ContestMgmt {
                 throw new ContestException("Указанного изображения не существует");
             }
 
-            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            $user = $auth->getAuthenticatedUser();
             if (!$this->isUserOwnerPhoto($image, $user)) {
                 throw new ContestException("Вы не владелец этого изображения");
             }
@@ -706,13 +706,17 @@ class ContestMgmt {
             }
 
             $body = json_decode($body);
-            if (!isset($body) || !isset($body->subject) || strlen($body->subject) == 0) {
-                throw new ContestException("Незадана новая тема");
-            }
-
             $image = new Image();
             $image->id = $id;
-            $image->subject = $body->subject;
+
+            if (!isset($body) || ((!isset($body->subject) || strlen($body->subject) == 0) && $contest->is_user_contest == 0)) {
+                throw new ContestException("Не задана новая тема");
+            }
+
+            if ($contest->is_user_contest == 0) {
+                $image->subject = $body->subject;
+            }
+
             if (isset($body->description) && strlen($body->description) > 0) {
                 $image->description = $body->description;
             }
