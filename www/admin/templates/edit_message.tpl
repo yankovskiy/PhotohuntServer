@@ -16,7 +16,7 @@
 <td><select name="to_user_id">{html_options values=$to_users_values selected=$to_users_selected output=$to_users_output}</select></td>
 <td><input type="text" name="date" value="{$message.date}"></td>
 <td><input type="text" name="title" value="{$message.title}"></td>
-<td><input type="text" name="message" value="{$message.message}"></td>
+<td><textarea name="message">{$message.message}</textarea></td>
 <td><input type="text" name="status" value="{if $message.status eq 0}
     Не отправлено
 {elseif $message.status eq 1}

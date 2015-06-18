@@ -15,7 +15,7 @@
 <td><select name="to_user_id">{html_options values=$to_users_values selected=$to_users_selected output=$to_users_output}</select></td>
 <td><input type="text" name="date" value="{$date}"></td>
 <td><input type="text" name="title" value=""></td>
-<td><input type="text" name="message" value=""></td>
+<td><textarea name="message"></textarea></td>
 </tr>
 <tr>
 <td colspan=5 align=center><input type="submit" name="submit" value="OK"></td>

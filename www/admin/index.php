@@ -20,6 +20,7 @@ require_once '../include/db.php';
 require_once '../include/auth.php';
 require_once '../vendor/smarty/Smarty.class.php';
 require_once '../include/contestmgmt.php';
+require_once '../include/messagemgmt.php';
 
 abstract class Types {
     const CONTEST = "contest";
@@ -372,7 +373,14 @@ class Admin {
             $message->status = Message::UNSENT;
             $message->title = $_POST["title"];
 
-            $this->mDb->adminAddMessage($message);
+            $message = $this->mDb->saveMessage($message);
+            $regid = $message->regid;
+            if (isset($regid) && strlen($regid) > 8) {
+                $mgmt = new MessageMgmt();
+                $mgmt->send($message);
+                $this->mDb->markMessage($message->id, Message::SENT);
+            }
+            
             $this->printAllMessages();
         } else {
             $date = date("Y-m-d H:i:s");
