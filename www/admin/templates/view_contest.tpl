@@ -1,5 +1,6 @@
 {include file="header.tpl"}
 <a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}">К списку конкурсов</a><br><br>
+{$contest.id}. {$contest.subject}<br>
 <table border="1" cellpadding="5">
 <tr>
 <td>Фото</td>

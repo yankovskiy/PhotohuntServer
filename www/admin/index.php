@@ -83,6 +83,7 @@ class Admin {
     }
 
     private function viewContest($id) {
+        $contest = $this->objectsToArray($this->mDb->getContest($id));
         $images = $this->objectsToArray($this->mDb->getImagesForContest($id, true));
         $imageList = array();
         foreach ($images as $image) {
@@ -101,6 +102,7 @@ class Admin {
         }
 
         $smarty = new Smarty();
+        $smarty->assign("contest", $contest);
         $smarty->assign("user_option_selected", $user_option_selected);
         $smarty->assign("user_option_values", $user_option_values);
         $smarty->assign("user_option_output", $user_option_output);
