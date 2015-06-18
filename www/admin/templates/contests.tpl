@@ -8,7 +8,7 @@
 <td>Действие</td></tr>
 {section name=contest loop=$contests}
 <tr>
-<td><a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?id={$contests[contest].id}&type=contest&action=view">{$contests[contest].subject}</a></td>
+<td><a href="http://{$smarty.server.SERVER_NAME}{$SCRIPT_NAME}?id={$contests[contest].id}&type=contest&action=view">{$contests[contest].id}. {$contests[contest].subject}</a></td>
 <td>{$contests[contest].open_date}</td>
 <td>{$contests[contest].close_date}</td>
 <td>{$contests[contest].display_name}</td>
