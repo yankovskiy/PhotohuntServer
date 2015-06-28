@@ -118,7 +118,9 @@ class CommentMgmgt {
             }
 
             $this->mDb->addImageComments($id, $auth->getAuthenticatedUser()->id, $comment);
-            $this->gcmSendMessage($image->user_id);
+            if ($image->user_id != $auth->getAuthenticatedUser()->id) {
+                $this->gcmSendMessage($image->user_id);
+            }
         }
     }
 
