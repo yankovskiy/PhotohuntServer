@@ -567,10 +567,10 @@ $app->notFound(function () use ($app) {
         $app = \Slim\Slim::getInstance();
         try {
             $contest->conenctToDb();
-            $status = $contest->addImageToContest($id);
-            if($status["status"] == false) {
-                $app->halt(403, json_encode($status, JSON_UNESCAPED_UNICODE));
-            }
+            $contest->addImageToContest($id);
+        } catch (ContestException $e) {
+            $error = array("status" => false, "error" => $e->getMessage());
+            $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
         } catch (PDOException $e) {
             $app->halt(500);
         }

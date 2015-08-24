@@ -388,7 +388,6 @@ class ContestMgmt {
     /**
      * Добавить изображение на конкурс. Изображение может быть добавлено только в открытый конкурс
      * @param int $id id конкурса
-     * @return array (status, error). Boolean status false в случае ошибки, string error содержит текст ошибки
      */
     public function addImageToContest($id) {
         $success = false;
@@ -398,59 +397,66 @@ class ContestMgmt {
         if ($auth->authenticate($this->mDb) && isset($_POST["subject"]) && isset($_FILES["image"])) {
             $contest = $this->mDb->getContest($id);
             // конкурс существует и он в статусе "прием работ"
-            if (isset($contest) && $this->isContestOpen($contest)) {
-                $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
-                // пользователь существует и пользователь не создатель конкурса, или это пользовательский конкурс
-                if (isset($user) && ($this->isUserOwnerContest($contest, $user) == false || $this->isUserContest($contest))) {
-                    $isUserCanAddImage = $this->isUserCanAddImage($contest, $user);
-                    if ($isUserCanAddImage["status"]){
-                        $image = new Image();
-                        $image->contest_id = $id;
-                        $image->user_id = $user->id;
-                        $image->subject = $_POST["subject"];
-                        if (isset($_POST["exif"]) && strlen($_POST["exif"]) > 0) {
-                            $image->exif = $this->prepareExif($_POST["exif"]);
-                        }
+            if (!(isset($contest) && $this->isContestOpen($contest))) {
+                throw new ContestException("Работы принимаются только в открытый конкурс");
+            }
+            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            // пользователь существует и пользователь не создатель конкурса, или это пользовательский конкурс
+            if (!(isset($user) && ($this->isUserOwnerContest($contest, $user) == false || $this->isUserContest($contest)))) {
+                throw new ContestException("Вы не можете добавлять работы в свой конкурс");
+            }
+            $isUserCanAddImage = $this->isUserCanAddImage($contest, $user);
+            if (!$isUserCanAddImage["status"]) {
+                throw  new ContestException("Вы уже загружали работу в этот конкурс");
+            }
+            $image = new Image();
+            $image->contest_id = $id;
+            $image->user_id = $user->id;
+            $image->subject = $_POST["subject"];
+            if (isset($_POST["exif"]) && strlen($_POST["exif"]) > 0) {
+                $image->exif = $this->prepareExif($_POST["exif"]);
+                
+                if (isset($image->exif->datetime)) {
+                    list($date, $time) = explode(" ", $image->exif->datetime);
+                    $date = str_replace(":", "", $date);
+                    $contestOpenDate = str_replace("-", "", $contest->open_date);
+                    $contestCloseDate = str_replace("-", "", $contest->close_date);
 
-                        if (isset($_POST["description"]) && strlen($_POST["description"]) > 0) {
-                            $image->description = $_POST["description"];
-                        }
-
-                        $recordId = $this->mDb->addImageToContest($image);
-                        if ($recordId > 0) {
-                            $file = $_FILES["image"];
-                            $uploadfile = Config::UPLOAD_PATH . basename($recordId . ".jpg");
-                            $success = $this->handleUploadedFile($file, $uploadfile);
-                            if ($success) {
-                                $this->mDb->incrementUserBalance($user->id);
-                                // изменить количество платных публикаций
-                                if ($isUserCanAddImage["is_shop"]) {
-                                    $this->mDb->useUserItems($user->id, Item::EXTRA_PHOTO);
-
-                                    $date =  date("Y-m-d H:i:s");
-                                    $message = sprintf("Использование покупки %s", ITEM::EXTRA_PHOTO);
-
-                                    $this->mDb->logShopAction($user->id, $date, $message);
-
-                                }
-                            } else {
-                                $this->mDb->removeImageFromContest($contestId, $recordId);
-                            }
-                        } else {
-                            $error = "Ошибка при загрузке изображения";
-                        }
-                    } else {
-                        $error = "Вы уже загружали работу в этот конкурс";
+                    if ($date < $contestOpenDate || $date >= $contestCloseDate) {
+                        throw new ContestException("Фотография должна быть сделана в сроки проведения конкурса");
                     }
-                } else {
-                    $error = "Вы не можете добавлять работы в свой конкурс";
+                }
+                
+                $image->exif = json_encode($image->exif, JSON_UNESCAPED_UNICODE);
+            }
+
+            if (isset($_POST["description"]) && strlen($_POST["description"]) > 0) {
+                $image->description = $_POST["description"];
+            }
+
+            $recordId = $this->mDb->addImageToContest($image);
+            if ($recordId <= 0) {
+                throw new ContestException("Ошибка при загрузке изображения");
+            }
+            $file = $_FILES["image"];
+            $uploadfile = Config::UPLOAD_PATH . basename($recordId . ".jpg");
+            $success = $this->handleUploadedFile($file, $uploadfile);
+            if ($success) {
+                $this->mDb->incrementUserBalance($user->id);
+                // изменить количество платных публикаций
+                if ($isUserCanAddImage["is_shop"]) {
+                    $this->mDb->useUserItems($user->id, Item::EXTRA_PHOTO);
+
+                    $date =  date("Y-m-d H:i:s");
+                    $message = sprintf("Использование покупки %s", ITEM::EXTRA_PHOTO);
+
+                    $this->mDb->logShopAction($user->id, $date, $message);
+
                 }
             } else {
-                $error = "Работы принимаются только в открытый конкурс";
+                $this->mDb->removeImageFromContest($contestId, $recordId);
             }
         }
-
-        return array("status" => $success, "error" => $error);
     }
 
     /**
@@ -501,7 +507,7 @@ class ContestMgmt {
         }
 
         if (!$empty) {
-            return json_encode($exif, JSON_UNESCAPED_UNICODE);
+            return $exif;
         } else {
             return null;
         }
