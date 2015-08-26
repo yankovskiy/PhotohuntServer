@@ -4,6 +4,7 @@ require_once 'contest.php';
 require_once 'image.php';
 require_once 'db.php';
 require_once 'exceptions.php';
+require_once 'achievementsmgmt.php';
 
 class CommentMgmgt {
     private $mDb;
@@ -121,6 +122,13 @@ class CommentMgmgt {
             if ($image->user_id != $auth->getAuthenticatedUser()->id) {
                 $this->gcmSendMessage($image->user_id);
             }
+            
+            $ach = new AchievementsMgmt();
+            $ach->setDbConnection($this->mDb);
+            // Оставить 50 комментариев
+            $ach->incOrGiveBadge($auth->getAuthenticatedUser(), AchievementsMgmt::A19);
+            // Оставить 200 комментариев
+            $ach->incOrGiveBadge($auth->getAuthenticatedUser(), AchievementsMgmt::A20);
         }
     }
 
@@ -151,6 +159,12 @@ class CommentMgmgt {
             }
 
             $this->mDb->removeComment($id, $image->id);
+            $ach = new AchievementsMgmt();
+            $ach->setDbConnection($this->mDb);
+            // Оставить 50 комментариев
+            $ach->decVal($auth->getAuthenticatedUser(), AchievementsMgmt::A19);
+            // Оставить 200 комментариев
+            $ach->decVal($auth->getAuthenticatedUser(), AchievementsMgmt::A20);
         }
     }
 }

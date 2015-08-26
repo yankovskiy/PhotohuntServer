@@ -21,6 +21,7 @@ require_once '../include/auth.php';
 require_once '../vendor/smarty/Smarty.class.php';
 require_once '../include/contestmgmt.php';
 require_once '../include/messagemgmt.php';
+require_once '../include/achievementsmgmt.php';
 
 abstract class Types {
     const CONTEST = "contest";
@@ -182,6 +183,24 @@ class Admin {
         $image = $this->mDb->getImageById($id);
         $this->mDb->removeImageFromContest($contestId, $id);
         $this->mDb->decreaseUserBalance($image->user_id);
+        $user = $this->mDb->getUserById($image->user_id);
+        $ach = new AchievementsMgmt();
+        $ach->setDbConnection($this->mDb);
+        
+        // Добавить 50 изображений
+        $ach->decVal($user, AchievementsMgmt::A13);
+        // Добавить 100 изображений
+        $ach->decVal($user, AchievementsMgmt::A14);
+        // Добавить 200 изображений
+        $ach->decVal($user, AchievementsMgmt::A15);
+        
+        // 30 фотографий с exif'ом и описанием
+        if (!$ach->isHaveBadge($user, AchievementsMgmt::A18)) {
+            if (isset($image->exif) && strlen($image->exif) > 0 &&
+            isset($image->description) && strlen($image->description) > 0) {
+                $ach->decVal($user, AchievementsMgmt::A18);
+            }
+        }
         $this->viewContest($contestId);
     }
 

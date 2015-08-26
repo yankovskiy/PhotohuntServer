@@ -24,6 +24,7 @@ require_once 'include/exceptions.php';
 require_once 'include/shopmgmt.php';
 require_once 'include/messagemgmt.php';
 require_once 'include/commentmgmt.php';
+require_once 'include/achievementsmgmt.php'; 
 
 $app = new \Slim\Slim();
 $app->contentType('text/html; charset=utf-8');
@@ -77,8 +78,64 @@ $app->notFound(function () use ($app) {
     $app->post('/image/:id/comments', 'addImageComments');
     $app->delete('/comments/:id', 'removeComment');
     $app->get('/comments/unread', 'getUnreadComments');
+    
+    /* achievements management */
+    $app->get('/achievements', 'getAchievements');
+    $app->get('/achievements/user/:id', 'getUserAchievements');
+    $app->get('/achievements/users/:achievement', 'getAchievementUserList');
 
     $app->run();
+    
+    function getAchievementUserList($achievement) {
+        $achieve = new AchievementsMgmt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $achieve->conenctToDb();
+            try {
+                $achieve->getAchievementUserList($achievement);
+            } catch (AchievementsException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function getUserAchievements($id) {
+        $achieve = new AchievementsMgmt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $achieve->conenctToDb();
+            try {
+                $achieve->getUserAchievements($id);
+            } catch (AchievementsException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
+    
+    function getAchievements() {
+        $achieve = new AchievementsMgmt();
+        $app = \Slim\Slim::getInstance();
+        
+        try {
+            $achieve->conenctToDb();
+            try {
+                $achieve->getAchievements();
+            } catch (AchievementsException $e) {
+                $error = array("status" => false, "error" => $e->getMessage());
+                $app->halt(403, json_encode($error, JSON_UNESCAPED_UNICODE));
+            }
+        } catch (PDOException $e) {
+            $app->halt(500);
+        }
+    }
 
     function createNewContest() {
         $contest = new ContestMgmt();

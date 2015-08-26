@@ -33,7 +33,28 @@ class User {
     public $avatar;
     public $regid;
     public $client_version;
-
+    public $a1;
+    public $a2;
+    public $a3;
+    public $a4;
+    public $a5;
+    public $a6;
+    public $a7;
+    public $a8;
+    public $a9;
+    public $a10;
+    public $a11;
+    public $a12;
+    public $a13;
+    public $a14;
+    public $a15;
+    public $a16;
+    public $a17;
+    public $a18;
+    public $a19;
+    public $a20;
+    public $today;
+    
     /**
      * Конструктор
      * @param array $row содержит массив для заполнения полей объекта, либо NULL, в случае, если

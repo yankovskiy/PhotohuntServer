@@ -25,12 +25,110 @@ require_once 'image.php';
 require_once 'common.php';
 require_once 'message.php';
 require_once 'comment.php';
+require_once 'achievementsmgmt.php';
 
 /**
  * Класс для работы с базой данных
  */
 class Database {
     private $mConnection;
+
+    /**
+     * Пересчитывает достижение "посещать каждый день в течении 30 дней"
+     */
+    public function todayUpdate() {
+        try {
+            $this->mConnection->beginTransaction();
+            $sql = "update `users` set `a7` = `a7` + 1 where `a7` != -100 and `today` = 1";
+            $this->mConnection->query($sql);
+            $sql = "update `users` set `today` = 0";
+            $this->mConnection->query($sql);
+            $sql = "update `users` set `a7` = -100 where `a7` >= 30";
+            $this->mConnection->query($sql);
+            $this->mConnection->commit();
+        } catch (PDOException $e) {
+            echo "Exception: " . $e;
+            $this->mConnection->rollBack();
+        }
+    }
+    
+    /**
+     * Получить максимальное значение которое нужно достигнуть, чтобы получить достижение
+     * @param string $badge
+     * @return int значение максимального значения достижения
+     */
+    public function getAchievementMaxValue($badge) {
+        $sql = "select `max_val` from `achievements` where `service_name` = :badge";
+        $params = array("badge" => $badge);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC)[0]["max_val"];
+    }
+    
+    /**
+     * Отмечает сегодняшний вход пользователя
+     * @param int $userId id пользователя
+     */
+    public function setUserVisitToday($userId) {
+        $sql = "update `users` set `today` = 1 where `id` = :user_id";
+        $params = array("user_id" => $userId);
+        $stmt = $this->mConnection->prepare($sql)->execute($params);
+    }
+    
+    /**
+     * Получить список достижений
+     * @return array список достижений
+     */
+    public function getAchievements() {
+        $sql = "select * from achievements order by `service_name` + 0 asc";
+        return $this->mConnection->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Получить статистику по достижениям
+     * @return array список-статистика достижений
+     */
+    public function getAchievementsStats() {
+        $sql = "select
+                sum(case when a1 = :achieved then 1 else 0 end) a1,
+                sum(case when a2 = :achieved then 1 else 0 end) a2,
+                sum(case when a3 = :achieved then 1 else 0 end) a3,
+                sum(case when a4 = :achieved then 1 else 0 end) a4,
+                sum(case when a5 = :achieved then 1 else 0 end) a5,
+                sum(case when a6 = :achieved then 1 else 0 end) a6,
+                sum(case when a7 = :achieved then 1 else 0 end) a7,
+                sum(case when a8 = :achieved then 1 else 0 end) a8,
+                sum(case when a9 = :achieved then 1 else 0 end) a9,
+                sum(case when a10 = :achieved then 1 else 0 end) a10,
+                sum(case when a11 = :achieved then 1 else 0 end) a11,
+                sum(case when a12 = :achieved then 1 else 0 end) a12,
+                sum(case when a13 = :achieved then 1 else 0 end) a13,
+                sum(case when a14 = :achieved then 1 else 0 end) a14,
+                sum(case when a15 = :achieved then 1 else 0 end) a15,
+                sum(case when a16 = :achieved then 1 else 0 end) a16,
+                sum(case when a17 = :achieved then 1 else 0 end) a17,
+                sum(case when a18 = :achieved then 1 else 0 end) a18,
+                sum(case when a19 = :achieved then 1 else 0 end) a19,
+                sum(case when a20 = :achieved then 1 else 0 end) a20
+                from `users`";
+        $params = array("achieved" => AchievementsMgmt::ACHIEVED);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC)[0];
+    }
+    
+    /**
+     * Получить список пользователей получивших указанное достижение
+     * @param string $badge системное название достижения
+     * @return array список пользователей получивших достижение
+     */
+    public function getAchievementUserList($badge) {
+        $sql = sprintf("select `id`, `display_name`, `avatar` from `users` where `%s` = :achieved order by `id` asc", $badge);
+        $params = array("achieved" => AchievementsMgmt::ACHIEVED);
+        $stmt = $this->mConnection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     /**
      * Получает список непрочитанных комментариев
@@ -82,6 +180,18 @@ class Database {
     public function markCommentsAsRead($imageId) {
         $sql = "update comments set is_read = 1 where image_id = :image_id";
         $params = array("image_id" => $imageId);
+        $this->mConnection->prepare($sql)->execute($params);
+    }
+
+    /**
+     * Устанавливает значения достижения у пользователя
+     * @param id $userId id пользователя
+     * @param string $badge название достижения
+     * @param int $value значение достижения
+     */
+    public function setBadgeValue($userId, $badge, $value) {
+        $sql = sprintf("update `users` set `%s` = :value where `id` = :user_id", $badge);
+        $params = array("value" => $value, "user_id" => $userId);
         $this->mConnection->prepare($sql)->execute($params);
     }
 
@@ -545,6 +655,26 @@ class Database {
     }
 
     /**
+     * Получает значение достижения у пользователя
+     * @param int $userId id пользователя для проверки
+     * @param string $badge название достижения
+     * @return int значение достижения, либо -1 в случае ошибки
+     */
+    public function getUserBadgeValue($userId, $badge) {
+        $sql = sprintf("select `%s` as `value` from `users` where `id` = :user_id", $badge);
+        $params = array("user_id" => $userId);
+        $value = -1;
+        $stmt = $this->mConnection->prepare($sql);
+        if($stmt->execute($params)) {
+            if ($row = $stmt->fetch()) {
+                $value = $row["value"];
+            }
+        }
+
+        return $value;
+    }
+
+    /**
      * Получает количество побед пользователя (количество созданных их тем)
      * @param int $id id пользователя
      * @return int количество побед у пользователя
@@ -685,11 +815,32 @@ class Database {
     }
 
     /**
+     * Получает количество фотографий указанного автора в указанном конкурсе
+     * @param int $userId id пользователя 
+     * @param int $contestId id конкурса
+     * @return int количество картинок в конкурсе
+     */
+    public function getImageCount($userId, $contestId) {
+        $query = "select count(id) as count from images where contest_id = :contest_id and user_id = :user_id";
+        $params = array("contest_id" => $contestId, "user_id" => $userId);
+        $stmt = $this->mConnection->prepare($query);
+        $stmt->execute($params);
+
+        $count = 0;
+        if($row = $stmt->fetch()) {
+            $count = $row["count"];
+        }
+        
+        return $count;
+    }
+    
+    /**
      * Создание новых конкурсов
      * Создает новые конкурсы с темами заданными победителями в предыдущем конкурсе
      */
     public function createNewContests() {
-        $sql = "select `id`, `rewards`, `is_user_contest` from `contests` where `status` = 0 and to_days(now()) - to_days(`close_date`) = 1 and `winner_id` is null order by id asc";
+        // TODO должна быть переписана. В этой функции перемешивание слоев приложения
+        $sql = "select `id`, `user_id`, `rewards`, `is_user_contest` from `contests` where `status` = 0 and to_days(now()) - to_days(`close_date`) = 1 and `winner_id` is null order by id asc";
         $contests = $this->mConnection->query($sql);
         try{
             $this->mConnection->beginTransaction();
@@ -714,6 +865,11 @@ class Database {
                 );
                 $this->mConnection->prepare($sql)->execute($params);
 
+                $user = $this->getUserById($image["user_id"]);
+                $achs = new AchievementsMgmt();
+                $achs->setDbConnection($this);
+                
+                // если не пользовательский конкурс, создаем новый
                 if ($contest["is_user_contest"] == 0) {
                     $sql = "insert into `contests` (`subject`, `open_date`, `close_date`, `user_id`, `prev_id`) values (:subject, :open_date, :close_date, :user_id, :prev_id)";
                     $open_date = date('Y-m-d');
@@ -726,11 +882,16 @@ class Database {
                             "prev_id" => $contest["id"]
                     );
                     $this->mConnection->prepare($sql)->execute($params);
-                    
+
                     $sql = "update `users` set `balance` = `balance` + :rewards, `money` = `money` + :rewards where `id` = :user_id";
                 } else {
                     // в пользовательском конкурсе не начислять фотокойны
                     $sql = "update `users` set `balance` = `balance` + :rewards where `id` = :user_id";
+                    if ($contest["user_id"] == $image["user_id"]) {
+                        if (!$achs->isHaveBadge($user, AchievementsMgmt::A5)) {
+                            $achs->addBadge($user, AchievementsMgmt::A5);
+                        }
+                    }
                 }
 
                 $params = array(
@@ -738,12 +899,35 @@ class Database {
                         "rewards" => $contest["rewards"]
                 );
                 $this->mConnection->prepare($sql)->execute($params);
+                                
+                $achs->incOrGiveBadge($user, AchievementsMgmt::A16);
+                $achs->incOrGiveBadge($user, AchievementsMgmt::A17);
+                
+                if (!$achs->isHaveBadge($user, AchievementsMgmt::A1)) {
+                    $achs->addBadge($user, AchievementsMgmt::A1);
+                }
+                
+                $achs->incOrGiveBadge($user, AchievementsMgmt::A2);
+                $achs->incOrGiveBadge($user, AchievementsMgmt::A3);
+                $this->saveAchievementsCounter($user, AchievementsMgmt::A2);
+                $this->saveAchievementsCounter($user, AchievementsMgmt::A3);
             }
 
             $this->mConnection->commit();
         } catch (Exception $e) {
             $this->mConnection->rollBack();
         }
+    }
+    
+    /**
+     * Сохраняет значение счетчика достижения у конкретного пользователя, у других сбрасывает на 0
+     * @param User $user пользователь для которого выполнить сохранение счетчика
+     * @param string $badge системное название достижения
+     */
+    public function saveAchievementsCounter($user, $badge) {
+        $sql = sprintf("update `users` set `%s` = 0 where `id` != :id and `%s` != :achieved", $badge, $badge);
+        $params = array("id" => $user->id, "achieved" => AchievementsMgmt::ACHIEVED);
+        $this->mConnection->prepare($sql)->execute($params);
     }
 
     /**
@@ -806,8 +990,8 @@ class Database {
         $user = null;
 
         if ($stmt->execute(array('id' => $id))) {
-            if ($row = $stmt->fetch()) {
-                $user = new User($row);
+            if ($row = $stmt->fetchObject("User")) {
+                $user = $row;
             }
         }
 
@@ -911,6 +1095,21 @@ class Database {
         $stmt = $this->mConnection->prepare($sql);
         $stmt->execute($params);
     }
+    
+    /**
+     * Логирование времени и даты получения достижения
+     * @param int $userId id пользователя
+     * @param string $badge название достижения
+     */
+    public function logBadge($userId, $badge) {
+        $sql = "insert into achievements_logs (`user_id`, `service_name`, `date`) values (:user_id, :service_name, :date)";
+        $params = array(
+                "user_id" => $userId,
+                "service_name" => $badge,
+                "date" => date("Y-m-d H:i:s")
+        );
+        $this->mConnection->prepare($sql)->execute($params);
+    }
 
     /**
      * Получает список товаров в магазине
@@ -991,8 +1190,8 @@ class Database {
         $user = null;
 
         if($stmt->execute(array('user_id' => $userId))) {
-            if ($row = $stmt->fetch()) {
-                $user = new User($row);
+            if ($row = $stmt->fetchObject("User")) {
+                $user = $row;
             }
         }
 

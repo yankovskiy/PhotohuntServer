@@ -18,6 +18,7 @@
 require_once 'db.php';
 require_once 'auth.php';
 require_once 'exceptions.php';
+require_once 'achievementsmgmt.php';
 
 class ShopMgmt {
     private $mDb;
@@ -101,7 +102,7 @@ class ShopMgmt {
     public function buyItem($itemId) {
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
-            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            $user = $auth->getAuthenticatedUser();
             $goods = $this->mDb->getShopItem($itemId);
             if (!isset($goods)) {
                 throw new ShopException("Такого предмета в магазине нет");
@@ -115,6 +116,13 @@ class ShopMgmt {
             if ($goods->service_name == Item::AVATAR) {
                 if ($this->isAvatarExists($user)) {
                     throw new ShopException("\"Аватар\" нельзя купить дважды");
+                }
+                
+                $ach = new AchievementsMgmt();
+                $ach->setDbConnection($this->mDb);
+                
+                if (!$ach->isHaveBadge($user, AchievementsMgmt::A8)) {
+                    $ach->addBadge($user, AchievementsMgmt::A8);
                 }
             }
 

@@ -38,6 +38,11 @@ class Auth {
             if (isset($userInfo)) {
                 if($this->isPasswordValid($userInfo, $pass)) {
                     $this->mAuthUser = $userInfo;
+                    
+                    /* хардкод для быстродействия */
+                    if ($this->mAuthUser->today != 1 && $this->mAuthUser->a7 != -100) {
+                        $db->setUserVisitToday($userInfo->id);
+                    }
                     return true;
                 }
             }

@@ -39,3 +39,7 @@ class MessageException extends Exception {
 class CommentException extends Exception {
     
 }
+
+class AchievementsException extends Exception {
+    
+}

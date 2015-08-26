@@ -25,6 +25,7 @@ require_once 'image.php';
 require_once 'item.php';
 require_once 'config.php';
 require_once 'simpleimage.php';
+require_once 'achievementsmgmt.php';
 /**
  * Класс для управления конкурсами
  */
@@ -155,6 +156,16 @@ class ContestMgmt {
                 $date =  date("Y-m-d H:i:s");
                 $message = sprintf("Использование покупки %s", ITEM::EXTRA_CONTEST);
                 $this->mDb->logShopAction($user->id, $date, $message);
+
+                $ach = new AchievementsMgmt();
+                $ach->setDbConnection($this->mDb);
+                // создать пользовательский конкурс
+                if (!$ach->isHaveBadge($user, AchievementsMgmt::A4)) {
+                    $ach->addBadge($user, AchievementsMgmt::A4);
+                }
+
+                // создать три пользовательских конкурса
+                $ach->incOrGiveBadge($user, AchievementsMgmt::A6);
             }
         }
     }
@@ -400,7 +411,7 @@ class ContestMgmt {
             if (!(isset($contest) && $this->isContestOpen($contest))) {
                 throw new ContestException("Работы принимаются только в открытый конкурс");
             }
-            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            $user = $auth->getAuthenticatedUser();
             // пользователь существует и пользователь не создатель конкурса, или это пользовательский конкурс
             if (!(isset($user) && ($this->isUserOwnerContest($contest, $user) == false || $this->isUserContest($contest)))) {
                 throw new ContestException("Вы не можете добавлять работы в свой конкурс");
@@ -415,7 +426,7 @@ class ContestMgmt {
             $image->subject = $_POST["subject"];
             if (isset($_POST["exif"]) && strlen($_POST["exif"]) > 0) {
                 $image->exif = $this->prepareExif($_POST["exif"]);
-                
+
                 if (isset($image->exif->datetime)) {
                     list($date, $time) = explode(" ", $image->exif->datetime);
                     $date = str_replace(":", "", $date);
@@ -426,7 +437,7 @@ class ContestMgmt {
                         throw new ContestException("Фотография должна быть сделана в сроки проведения конкурса");
                     }
                 }
-                
+
                 $image->exif = json_encode($image->exif, JSON_UNESCAPED_UNICODE);
             }
 
@@ -452,6 +463,31 @@ class ContestMgmt {
 
                     $this->mDb->logShopAction($user->id, $date, $message);
 
+                }
+
+                $ach = new AchievementsMgmt();
+                $ach->setDbConnection($this->mDb);
+
+                // Добавить 50 изображений
+                $ach->incOrGiveBadge($user, AchievementsMgmt::A13);
+                // Добавить 100 изображений
+                $ach->incOrGiveBadge($user, AchievementsMgmt::A14);
+                // Добавить 200 изображений
+                $ach->incOrGiveBadge($user, AchievementsMgmt::A15);
+
+                // добавить в конкурс 3 работы
+                if (!$ach->isHaveBadge($user, AchievementsMgmt::A9)) {
+                    if ($this->mDb->getImageCount($user->id, $id) >= 3) {
+                        $ach->addBadge($user, AchievementsMgmt::A9);
+                    }
+                }
+
+                // 30 фотографий с exif'ом и описанием
+                if (!$ach->isHaveBadge($user, AchievementsMgmt::A18)) {
+                    if (isset($image->exif) && strlen($image->exif) > 0 &&
+                    isset($image->description) && strlen($image->description) > 0) {
+                        $ach->incOrGiveBadge($user, AchievementsMgmt::A18);
+                    }
                 }
             } else {
                 $this->mDb->removeImageFromContest($contestId, $recordId);
@@ -527,6 +563,23 @@ class ContestMgmt {
 
             if ($success) {
                 $this->mDb->incrementUserBalance($image->user_id);
+                $user = $this->mDb->getUserById($image->user_id);
+                $ach = new AchievementsMgmt();
+                $ach->setDbConnection($this->mDb);
+
+                // Добавить 50 изображений
+                $ach->incOrGiveBadge($user, AchievementsMgmt::A13);
+                // Добавить 100 изображений
+                $ach->incOrGiveBadge($user, AchievementsMgmt::A14);
+                // Добавить 200 изображений
+                $ach->incOrGiveBadge($user, AchievementsMgmt::A15);
+
+                // добавить в конкурс 3 работы
+                if (!$ach->isHaveBadge($user, AchievementsMgmt::A9)) {
+                    if ($this->mDb->getImageCount($user->id, $image->contest_id) >= 3) {
+                        $ach->addBadge($user, AchievementsMgmt::A9);
+                    }
+                }
             } else {
                 $this->mDb->removeImageFromContest($image->contest_id, $recordId);
             }
@@ -659,11 +712,11 @@ class ContestMgmt {
         $auth = new Auth();
         if ($auth->authenticate($this->mDb)) {
             $image = $this->mDb->getImageById($id);
-            if (!isset($image)) {
+            if (empty($image)) {
                 throw new ContestException("Указанного изображения не существует");
             }
 
-            $user = $this->mDb->getUserByUserId($auth->getAuthenticatedUserId());
+            $user = $auth->getAuthenticatedUser();
             if (!$this->isUserOwnerPhoto($image, $user)) {
                 throw new ContestException("Вы не владелец этого изображения");
             }
@@ -681,6 +734,23 @@ class ContestMgmt {
             unlink($fileName);
             $this->mDb->removeImageFromContest($image->contest_id, $image->id);
             $this->mDb->decreaseUserBalance($image->user_id);
+            $ach = new AchievementsMgmt();
+            $ach->setDbConnection($this->mDb);
+
+            // Добавить 50 изображений
+            $ach->decVal($user, AchievementsMgmt::A13);
+            // Добавить 100 изображений
+            $ach->decVal($user, AchievementsMgmt::A14);
+            // Добавить 200 изображений
+            $ach->decVal($user, AchievementsMgmt::A15);
+
+            // 30 фотографий с exif'ом и описанием
+            if (!$ach->isHaveBadge($user, AchievementsMgmt::A18)) {
+                if (isset($image->exif) && strlen($image->exif) > 0 &&
+                isset($image->description) && strlen($image->description) > 0) {
+                    $ach->decVal($user, AchievementsMgmt::A18);
+                }
+            }
         }
     }
 
